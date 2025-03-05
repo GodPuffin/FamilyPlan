@@ -5,6 +5,7 @@ type SessionData struct {
 	IsAuthenticated bool
 	UserId          string
 	Username        string
+	Name            string
 }
 
 // FamilyPlan represents a subscription plan that can be shared among family/friends
@@ -23,11 +24,13 @@ type FamilyPlan struct {
 type Member struct {
 	Id       string `json:"id"`
 	Username string `json:"username"`
+	Name     string `json:"name"`
 }
 
 // JoinRequest represents a user's request to join a family plan
 type JoinRequest struct {
 	UserId      string `json:"user_id"`
 	Username    string `json:"username"`
+	Name        string `json:"name"`
 	RequestedAt string `json:"requested_at"`
 }

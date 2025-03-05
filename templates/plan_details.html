@@ -77,7 +77,7 @@
                                 {{slice .Username 0 1 | upper}}
                             </div>
                             <div class="ml-3">
-                                <p class="font-medium">{{.Username}}</p>
+                                <p class="font-medium">{{if .Name}}{{.Name}}{{else}}{{.Username}}{{end}}</p>
                                 {{if eq .Id $.plan.Owner}}
                                 <span class="text-xs text-yellow-800 bg-yellow-100 px-2 py-0.5 rounded">Owner</span>
                                 {{end}}
@@ -135,7 +135,7 @@
                                 {{slice .Username 0 1 | upper}}
                             </div>
                             <div class="ml-3">
-                                <p class="font-medium">{{.Username}}</p>
+                                <p class="font-medium">{{if .Name}}{{.Name}}{{else}}{{.Username}}{{end}}</p>
                                 <p class="text-xs text-gray-500">Requested on {{slice .RequestedAt 0 10}}</p>
                             </div>
                         </div>

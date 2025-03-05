@@ -26,9 +26,9 @@
             <nav class="mt-4">
                 <ul class="flex space-x-4 items-center">
                     {{if .isAuthenticated}}
-                        <!-- <li><a href="/family-plans" class="text-blue-600 hover:text-blue-800">My Family Plans</a></li> -->
                         <li class="flex items-center">
-                            <span class="text-gray-600 mr-4">Signed in as: <span class="font-semibold">{{.username}}</span></span>
+                            <span class="text-gray-600 mr-4">Signed in as: <span class="font-semibold">{{if .name}}{{.name}}{{else}}{{.username}}{{end}}</span></span>
+                            <button id="openProfileModalBtn" class="text-blue-600 hover:text-blue-800 mr-4">Edit Profile</button>
                             <a href="/logout" class="text-red-600 hover:text-red-800">Logout</a>
                         </li>
                     {{end}}
@@ -44,6 +44,143 @@
             <p>Made by <a href="https://github.com/GodPuffin" class="hover:text-gray-700">Marcus</a> 🤓</p>
         </footer>
     </div>
+
+    {{if .isAuthenticated}}
+    <!-- Profile Edit Modal -->
+    <div id="profileModal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg p-8 max-w-md w-full">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold">Edit Profile</h3>
+                <button id="closeProfileModalBtn" class="text-gray-500 hover:text-gray-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <div id="profileModalContent">
+                {{if .profileError}}
+                <div class="mb-4 p-3 bg-red-100 text-red-700 rounded">
+                    {{.profileError}}
+                </div>
+                {{end}}
+                
+                {{if .profileSuccess}}
+                <div class="mb-4 p-3 bg-green-100 text-green-700 rounded">
+                    {{.profileSuccess}}
+                </div>
+                {{end}}
+                
+                <form action="/profile" method="POST" class="space-y-4" id="profileForm">
+                    <div>
+                        <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Display Name</label>
+                        <input 
+                            type="text" 
+                            id="name" 
+                            name="name" 
+                            value="{{.name}}"
+                            placeholder="Enter your display name"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                        <p class="text-sm text-gray-500 mt-1">Leave blank to use your username</p>
+                    </div>
+                    
+                    <div class="pt-2">
+                        <button type="submit" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                            Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Profile Modal
+        document.addEventListener('DOMContentLoaded', function() {
+            const profileModal = document.getElementById('profileModal');
+            const openProfileModalBtn = document.getElementById('openProfileModalBtn');
+            const closeProfileModalBtn = document.getElementById('closeProfileModalBtn');
+            const profileForm = document.getElementById('profileForm');
+
+            if (profileModal && openProfileModalBtn && closeProfileModalBtn) {
+                openProfileModalBtn.addEventListener('click', function() {
+                    profileModal.classList.remove('hidden');
+                });
+
+                closeProfileModalBtn.addEventListener('click', function() {
+                    profileModal.classList.add('hidden');
+                });
+
+                // Close modal when clicking outside
+                window.addEventListener('click', function(event) {
+                    if (event.target === profileModal) {
+                        profileModal.classList.add('hidden');
+                    }
+                });
+
+                // Handle form submission with AJAX
+                profileForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    
+                    const formData = new FormData(profileForm);
+                    
+                    fetch('/profile', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Update the display name in the header without refreshing
+                            const nameElement = document.querySelector('span.font-semibold');
+                            const newName = formData.get('name') || '{{.username}}';
+                            if (nameElement) {
+                                nameElement.textContent = newName;
+                            }
+                            
+                            // Show success message
+                            const successMsg = document.createElement('div');
+                            successMsg.className = 'mb-4 p-3 bg-green-100 text-green-700 rounded';
+                            successMsg.textContent = data.message;
+                            
+                            const modalContent = document.getElementById('profileModalContent');
+                            // Remove any existing messages
+                            const existingMsgs = modalContent.querySelectorAll('.mb-4.p-3');
+                            existingMsgs.forEach(msg => msg.remove());
+                            
+                            // Add new success message at the top
+                            modalContent.insertBefore(successMsg, modalContent.firstChild);
+                            
+                            // Close modal after a delay
+                            setTimeout(() => {
+                                profileModal.classList.add('hidden');
+                                // Reload the page to reflect changes
+                                window.location.reload();
+                            }, 1500);
+                        } else {
+                            // Show error message
+                            const errorMsg = document.createElement('div');
+                            errorMsg.className = 'mb-4 p-3 bg-red-100 text-red-700 rounded';
+                            errorMsg.textContent = data.message || 'Failed to update profile';
+                            
+                            const modalContent = document.getElementById('profileModalContent');
+                            // Remove any existing messages
+                            const existingMsgs = modalContent.querySelectorAll('.mb-4.p-3');
+                            existingMsgs.forEach(msg => msg.remove());
+                            
+                            // Add new error message at the top
+                            modalContent.insertBefore(errorMsg, modalContent.firstChild);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                    });
+                });
+            }
+        });
+    </script>
+    {{end}}
 </body>
 </html>
 {{end}} 

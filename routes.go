@@ -26,6 +26,9 @@ func setupRoutes(app *pocketbase.PocketBase, e *echo.Echo, templatesFS embed.FS)
 	// Protected routes
 	authenticated := e.Group("", requireAuth)
 
+	// Profile routes
+	authenticated.POST("/profile", handleProfileUpdate(app))
+
 	// Family plans routes
 	authenticated.GET("/family-plans", handleFamilyPlansList(app, templatesFS))
 	authenticated.POST("/family-plans/create", handleCreateFamilyPlan(app))

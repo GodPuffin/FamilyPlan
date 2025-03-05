@@ -36,6 +36,7 @@ func setupAuthMiddleware(app *pocketbase.PocketBase, templatesFS embed.FS) echo.
 							session.IsAuthenticated = true
 							session.UserId = record.Id
 							session.Username = record.GetString("username")
+							session.Name = record.GetString("name")
 						}
 					}
 				}
@@ -73,6 +74,7 @@ func handleHome(templatesFS embed.FS) echo.HandlerFunc {
 			"title":           "Family Plan Manager - Home",
 			"isAuthenticated": session.IsAuthenticated,
 			"username":        session.Username,
+			"name":            session.Name,
 		})
 	}
 }
@@ -95,6 +97,7 @@ func handleLoginPage(templatesFS embed.FS) echo.HandlerFunc {
 			"error":           c.QueryParam("error"),
 			"isAuthenticated": session.IsAuthenticated,
 			"username":        session.Username,
+			"name":            session.Name,
 		})
 	}
 }
@@ -178,6 +181,7 @@ func handleRegisterPage(templatesFS embed.FS) echo.HandlerFunc {
 			"error":           c.QueryParam("error"),
 			"isAuthenticated": session.IsAuthenticated,
 			"username":        session.Username,
+			"name":            session.Name,
 		})
 	}
 }
@@ -275,5 +279,96 @@ func handleLogout() echo.HandlerFunc {
 
 		// Redirect to home page
 		return c.Redirect(http.StatusSeeOther, "/")
+	}
+}
+
+// Profile page handler
+func handleProfilePage(app *pocketbase.PocketBase, templatesFS embed.FS) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		session := c.Get("session").(SessionData)
+		if !session.IsAuthenticated {
+			return c.Redirect(http.StatusSeeOther, "/login")
+		}
+
+		// Get the user record
+		authCollection, err := app.Dao().FindCollectionByNameOrId("users")
+		if err != nil {
+			return err
+		}
+
+		// Find the user record
+		authRecord, err := app.Dao().FindRecordById(authCollection.Id, session.UserId)
+		if err != nil {
+			return err
+		}
+
+		// Get the current display name
+		name := authRecord.GetString("name")
+
+		tmpl, err := template.ParseFS(templatesFS, "templates/layout.html", "templates/profile.html")
+		if err != nil {
+			return err
+		}
+
+		return tmpl.ExecuteTemplate(c.Response().Writer, "layout", map[string]interface{}{
+			"title":           "Edit Profile - Family Plan Manager",
+			"isAuthenticated": session.IsAuthenticated,
+			"username":        session.Username,
+			"name":            name,
+			"error":           c.QueryParam("error"),
+			"success":         c.QueryParam("success"),
+		})
+	}
+}
+
+// Profile update handler
+func handleProfileUpdate(app *pocketbase.PocketBase) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		session := c.Get("session").(SessionData)
+		if !session.IsAuthenticated {
+			return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+				"success": false,
+				"message": "Not authenticated",
+			})
+		}
+
+		// Get the display name from the form
+		name := c.FormValue("name")
+
+		// Get the user record
+		authCollection, err := app.Dao().FindCollectionByNameOrId("users")
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+				"success": false,
+				"message": "Failed to update profile",
+			})
+		}
+
+		// Find the user record
+		authRecord, err := app.Dao().FindRecordById(authCollection.Id, session.UserId)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+				"success": false,
+				"message": "Failed to update profile",
+			})
+		}
+
+		// Update the name field
+		authRecord.Set("name", name)
+
+		// Save the record
+		if err := app.Dao().SaveRecord(authRecord); err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+				"success": false,
+				"message": "Failed to update profile",
+			})
+		}
+
+		// Return success JSON response
+		return c.JSON(http.StatusOK, map[string]interface{}{
+			"success": true,
+			"message": "Profile updated successfully",
+			"name":    name,
+		})
 	}
 }

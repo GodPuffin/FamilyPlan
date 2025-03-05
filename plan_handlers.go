@@ -115,6 +115,7 @@ func handleFamilyPlansList(app *pocketbase.PocketBase, templatesFS embed.FS) ech
 			"title":           "My Family Plans",
 			"isAuthenticated": session.IsAuthenticated,
 			"username":        session.Username,
+			"name":            session.Name,
 			"userId":          session.UserId,
 			"plans":           plans,
 		})
@@ -295,6 +296,7 @@ func handlePlanDetails(app *pocketbase.PocketBase, templatesFS embed.FS) echo.Ha
 				"title":           "Plan Not Found",
 				"isAuthenticated": session.IsAuthenticated,
 				"username":        session.Username,
+				"name":            session.Name,
 				"userId":          session.UserId,
 				"not_found":       true,
 				"plan":            nil,
@@ -364,6 +366,7 @@ func handlePlanDetails(app *pocketbase.PocketBase, templatesFS embed.FS) echo.Ha
 				members = append(members, Member{
 					Id:       ownerRecord.Id,
 					Username: ownerRecord.GetString("username"),
+					Name:     ownerRecord.GetString("name"),
 				})
 				uniqueMembers[ownerRecord.Id] = true
 			}
@@ -389,6 +392,7 @@ func handlePlanDetails(app *pocketbase.PocketBase, templatesFS embed.FS) echo.Ha
 					members = append(members, Member{
 						Id:       userRecord.Id,
 						Username: userRecord.GetString("username"),
+						Name:     userRecord.GetString("name"),
 					})
 					uniqueMembers[userRecord.Id] = true
 				}
@@ -425,6 +429,7 @@ func handlePlanDetails(app *pocketbase.PocketBase, templatesFS embed.FS) echo.Ha
 					joinRequests = append(joinRequests, JoinRequest{
 						UserId:      userId,
 						Username:    userRecord.GetString("username"),
+						Name:        userRecord.GetString("name"),
 						RequestedAt: request.GetDateTime("created").String(),
 					})
 				}
@@ -450,6 +455,7 @@ func handlePlanDetails(app *pocketbase.PocketBase, templatesFS embed.FS) echo.Ha
 			"title":           familyPlan.Name,
 			"isAuthenticated": session.IsAuthenticated,
 			"username":        session.Username,
+			"name":            session.Name,
 			"userId":          session.UserId,
 			"plan":            familyPlan,
 			"is_owner":        isOwner,
