@@ -120,7 +120,9 @@ func handleLoginSubmit(app *pocketbase.PocketBase) echo.HandlerFunc {
 		// Make sure the record is verified
 		if !authRecord.Verified() {
 			// Verify the account automatically
-			authRecord.SetVerified(true)
+			if err := authRecord.SetVerified(true); err != nil {
+				return c.Redirect(http.StatusSeeOther, "/login?error=Account+verification+failed")
+			}
 			if err := app.Dao().SaveRecord(authRecord); err != nil {
 				return c.Redirect(http.StatusSeeOther, "/login?error=Account+verification+failed")
 			}
@@ -224,7 +226,9 @@ func handleRegisterSubmit(app *pocketbase.PocketBase) echo.HandlerFunc {
 			return c.Redirect(http.StatusSeeOther, "/register?error=Password+setup+failed")
 		}
 
-		record.SetVerified(true) // Ensure the account is verified
+		if err := record.SetVerified(true); err != nil { // Ensure the account is verified
+			return c.Redirect(http.StatusSeeOther, "/register?error=Verification+failed")
+		}
 
 		// Save the record
 		if err := app.Dao().SaveRecord(record); err != nil {

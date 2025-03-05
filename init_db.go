@@ -74,14 +74,14 @@ func InitCollections(app *pocketbase.PocketBase) error {
 
 // ensureFamilyPlansCollection creates the family_plans collection if it doesn't exist
 func ensureFamilyPlansCollection(app *pocketbase.PocketBase) error {
-	collection, err := app.Dao().FindCollectionByNameOrId("family_plans")
+	_, err := app.Dao().FindCollectionByNameOrId("family_plans")
 	if err == nil {
 		// Collection already exists
 		return nil
 	}
 
 	// Create collection
-	collection = &models.Collection{
+	collection := &models.Collection{
 		Name: "family_plans",
 		Type: models.CollectionTypeBase,
 	}
@@ -141,14 +141,14 @@ func ensureFamilyPlansCollection(app *pocketbase.PocketBase) error {
 
 // ensureMembershipsCollection creates the memberships collection if it doesn't exist
 func ensureMembershipsCollection(app *pocketbase.PocketBase) error {
-	collection, err := app.Dao().FindCollectionByNameOrId("memberships")
+	_, err := app.Dao().FindCollectionByNameOrId("memberships")
 	if err == nil {
 		// Collection already exists
 		return nil
 	}
 
 	// Create collection
-	collection = &models.Collection{
+	collection := &models.Collection{
 		Name: "memberships",
 		Type: models.CollectionTypeBase,
 	}
@@ -191,14 +191,14 @@ func ensureMembershipsCollection(app *pocketbase.PocketBase) error {
 
 // ensureJoinRequestsCollection creates the join_requests collection if it doesn't exist
 func ensureJoinRequestsCollection(app *pocketbase.PocketBase) error {
-	collection, err := app.Dao().FindCollectionByNameOrId("join_requests")
+	_, err := app.Dao().FindCollectionByNameOrId("join_requests")
 	if err == nil {
 		// Collection already exists
 		return nil
 	}
 
 	// Create collection
-	collection = &models.Collection{
+	collection := &models.Collection{
 		Name: "join_requests",
 		Type: models.CollectionTypeBase,
 	}

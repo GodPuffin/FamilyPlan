@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/labstack/echo/v5"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 // TemplateRenderer is a custom renderer for Echo
@@ -17,7 +19,7 @@ type TemplateRenderer struct {
 var templateFuncs = template.FuncMap{
 	"upper": strings.ToUpper,
 	"lower": strings.ToLower,
-	"title": strings.Title,
+	"title": cases.Title(language.English).String,
 }
 
 // Render renders a template with the given name and data
