@@ -1,0 +1,307 @@
+{{define "content"}}
+<div class="max-w-4xl mx-auto">
+    <div class="bg-white p-8 rounded-lg shadow-md">
+        {{if .not_found}}
+            <!-- Plan Not Found -->
+            <div class="text-center py-8">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">Plan Not Found</h2>
+                <p class="text-gray-600 mb-6">The family plan you're looking for doesn't exist or has been deleted.</p>
+                <a href="/family-plans" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                    Back to My Plans
+                </a>
+            </div>
+        {{else if not .is_member}}
+            <!-- Not a Member - Request to Join -->
+            <div class="text-center py-8">
+                <div class="flex justify-between items-start mb-6">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800">You are not a part of "{{.plan.Name}}"</h2>
+                    </div>
+                    <a href="/family-plans" class="text-blue-500 hover:text-blue-700">Back to Plans</a>
+                </div>
+                
+                <div class="mt-8">
+                    {{if .pending_request}}
+                    <button disabled
+                        class="bg-gray-400 text-white font-bold py-3 px-6 rounded-lg cursor-not-allowed">
+                        Request Submitted
+                    </button>
+                    <p class="text-sm text-gray-600 mt-2">Your request is pending approval from the plan owner.</p>
+                    {{else}}
+                    <form action="/{{.plan.JoinCode}}/request-join" method="post">
+                        <button type="submit"
+                            class="bg-green-500 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors">
+                            Request to Join
+                        </button>
+                    </form>
+                    {{end}}
+                </div>
+            </div>
+        {{else}}
+            <!-- Plan Header (For members) -->
+            <div class="mb-8">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800">{{.plan.Name}}</h2>
+                        <p class="text-gray-600 mb-2">{{.plan.Description}}</p>
+                    </div>
+                    <a href="/family-plans" class="text-blue-500 hover:text-blue-700">Back to Plans</a>
+                </div>
+                <div class="mt-4 flex flex-wrap gap-3">
+                    <div class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
+                        ${{.plan.Cost}}/month
+                    </div>
+                    <div class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
+                        {{if eq .total_members 1}}
+                            {{.total_members}} member
+                        {{else}}
+                            {{.total_members}} members
+                        {{end}}
+                    </div>
+                    {{if .is_owner}}
+                    <div class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm">
+                        Owner
+                    </div>
+                    {{end}}
+                </div>
+            </div>
+
+            <!-- Members Section -->
+            <div class="mb-8">
+                <h3 class="text-lg font-semibold mb-4">Members</h3>
+                <div class="space-y-3">
+                    {{range .members}}
+                    <div class="flex justify-between items-center p-3 border rounded-lg">
+                        <div class="flex items-center">
+                            <div class="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-700">
+                                {{slice .Username 0 1 | upper}}
+                            </div>
+                            <div class="ml-3">
+                                <p class="font-medium">{{.Username}}</p>
+                                {{if eq .Id $.plan.Owner}}
+                                <span class="text-xs text-yellow-800 bg-yellow-100 px-2 py-0.5 rounded">Owner</span>
+                                {{end}}
+                            </div>
+                        </div>
+                        <div>
+                            {{if and $.is_owner (ne .Id $.plan.Owner)}}
+                            <form action="/{{$.plan.JoinCode}}/remove-member" method="post" class="inline" onsubmit="return confirm('Are you sure you want to remove {{.Username}} from this plan?');">
+                                <input type="hidden" name="user_id" value="{{.Id}}">
+                                <button type="submit"
+                                    class="text-red-500 hover:text-red-700 text-sm font-medium focus:outline-none">
+                                    Remove
+                                </button>
+                            </form>
+                            {{end}}
+                        </div>
+                    </div>
+                    {{end}}
+                </div>
+            </div>
+
+            <!-- Invitation Code Section (Only visible to owner) -->
+            {{if .is_owner}}
+            <div class="mb-8 p-4 bg-blue-50 rounded-lg">
+                <h3 class="text-lg font-semibold mb-2">Invite Members</h3>
+                <p class="text-gray-700 mb-3">Share this code with family members or friends you want to invite to this plan:</p>
+                <div class="bg-gray-100 p-3 rounded-lg text-center relative">
+                    <span class="text-xl font-mono">
+                        {{.plan.JoinCode}}
+                    </span>
+                    <button class="absolute right-3 top-3 text-gray-500 hover:text-gray-700" id="copyCodeBtn"
+                        data-code="{{.plan.JoinCode}}">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                        </svg>
+                        <span id="copyFeedback" class="hidden absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs py-1 px-2 rounded opacity-0 transition-opacity duration-300">
+                            Copied!
+                        </span>
+                    </button>
+                </div>
+            </div>
+            {{end}}
+
+            <!-- Join Requests Section (Only for owner) -->
+            {{if and .is_owner .join_requests}}
+            <div class="mb-8">
+                <h3 class="text-lg font-semibold mb-4">Join Requests</h3>
+                <div class="space-y-3">
+                    {{range .join_requests}}
+                    <div class="flex justify-between items-center p-3 border rounded-lg">
+                        <div class="flex items-center">
+                            <div class="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-700">
+                                {{slice .Username 0 1 | upper}}
+                            </div>
+                            <div class="ml-3">
+                                <p class="font-medium">{{.Username}}</p>
+                                <p class="text-xs text-gray-500">Requested on {{slice .RequestedAt 0 10}}</p>
+                            </div>
+                        </div>
+                        <div class="flex space-x-2">
+                            <form action="/{{$.plan.JoinCode}}/approve-request" method="post" class="inline">
+                                <input type="hidden" name="user_id" value="{{.UserId}}">
+                                <button type="submit"
+                                    class="bg-green-500 hover:bg-green-700 text-white py-1 px-3 rounded text-sm focus:outline-none">
+                                    Approve
+                                </button>
+                            </form>
+                            <form action="/{{$.plan.JoinCode}}/deny-request" method="post" class="inline">
+                                <input type="hidden" name="user_id" value="{{.UserId}}">
+                                <button type="submit"
+                                    class="bg-red-500 hover:bg-red-700 text-white py-1 px-3 rounded text-sm focus:outline-none">
+                                    Deny
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {{end}}
+                </div>
+            </div>
+            {{end}}
+
+            <!-- Plan Options Button (Only for owner) -->
+            {{if .is_owner}}
+            <div class="mt-8 text-center">
+                <button id="openOptionsBtn" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm py-1 px-3 rounded focus:outline-none">
+                    Plan Options
+                </button>
+            </div>
+            {{end}}
+
+            <!-- Leave Plan Button (For non-owners) -->
+            {{if and .is_member (not .is_owner)}}
+            <div class="mt-8 border-t pt-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-3">Leave Plan</h3>
+                <p class="text-gray-600 mb-4">If you no longer want to be part of this plan, you can leave at any time.</p>
+                <form action="/{{.plan.JoinCode}}/leave" method="post" onsubmit="return confirm('Are you sure you want to leave this plan?');">
+                    <button type="submit"
+                        class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none">
+                        Leave Plan
+                    </button>
+                </form>
+            </div>
+            {{end}}
+
+            <!-- Plan Options Modal (Only for owner) -->
+            {{if .is_owner}}
+            <div id="optionsModal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden">
+                <div class="bg-white rounded-lg p-8 max-w-md w-full">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-bold">Plan Options</h3>
+                        <button id="closeOptionsBtn" class="text-gray-500 hover:text-gray-700">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Update Plan Form -->
+                    <div class="mb-8">
+                        <h4 class="text-lg font-semibold mb-4">Update Plan Details</h4>
+                        <form action="/{{.plan.JoinCode}}/update" method="post">
+                            <div class="mb-4">
+                                <label for="planName" class="block text-gray-700 text-sm font-bold mb-2">Plan Name</label>
+                                <input type="text" id="planName" name="name" value="{{.plan.Name}}"
+                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                            </div>
+                            <div class="mb-4">
+                                <label for="planDescription" class="block text-gray-700 text-sm font-bold mb-2">Description</label>
+                                <textarea id="planDescription" name="description" rows="3"
+                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">{{.plan.Description}}</textarea>
+                            </div>
+                            <div class="mb-6">
+                                <label for="planCost" class="block text-gray-700 text-sm font-bold mb-2">Monthly Cost ($)</label>
+                                <input type="number" id="planCost" name="cost" step="0.01" min="0" value="{{.plan.Cost}}"
+                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                            </div>
+                            <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none w-full">
+                                Update Plan
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Danger Zone -->
+                    <div class="border-t pt-6">
+                        <h4 class="text-lg font-semibold text-red-800 mb-3">Danger Zone</h4>
+                        <p class="text-gray-600 mb-4">Permanently delete this family plan and all associated memberships.</p>
+                        <form action="/{{.plan.JoinCode}}/delete" method="post" onsubmit="return confirm('Are you sure you want to delete this plan? This action cannot be undone.');">
+                            <button type="submit"
+                                class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none w-full">
+                                Delete Plan
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {{end}}
+        {{end}}
+    </div>
+</div>
+
+<script>
+    // Copy invitation code to clipboard
+    document.addEventListener('DOMContentLoaded', function() {
+        const copyBtn = document.getElementById('copyCodeBtn');
+        if (copyBtn) {
+            copyBtn.addEventListener('click', function() {
+                const code = this.getAttribute('data-code');
+                const feedbackEl = document.getElementById('copyFeedback');
+                
+                navigator.clipboard.writeText(code).then(function() {
+                    // Show tooltip feedback
+                    feedbackEl.classList.remove('hidden');
+                    setTimeout(() => {
+                        feedbackEl.classList.add('opacity-100');
+                    }, 10);
+                    
+                    // Reset after delay
+                    setTimeout(function() {
+                        feedbackEl.classList.remove('opacity-100');
+                        setTimeout(() => {
+                            feedbackEl.classList.add('hidden');
+                        }, 300);
+                    }, 2000);
+                }).catch(function() {
+                    // Handle error
+                    feedbackEl.textContent = 'Failed to copy';
+                    feedbackEl.classList.remove('hidden');
+                    feedbackEl.classList.add('opacity-100', 'bg-red-800');
+                    
+                    setTimeout(function() {
+                        feedbackEl.classList.remove('opacity-100');
+                        setTimeout(() => {
+                            feedbackEl.classList.add('hidden');
+                            feedbackEl.classList.remove('bg-red-800');
+                            feedbackEl.textContent = 'Copied!';
+                        }, 300);
+                    }, 2000);
+                });
+            });
+        }
+
+        // Options Modal
+        const optionsModal = document.getElementById('optionsModal');
+        const openOptionsBtn = document.getElementById('openOptionsBtn');
+        const closeOptionsBtn = document.getElementById('closeOptionsBtn');
+
+        if (optionsModal && openOptionsBtn && closeOptionsBtn) {
+            openOptionsBtn.addEventListener('click', function() {
+                optionsModal.classList.remove('hidden');
+            });
+
+            closeOptionsBtn.addEventListener('click', function() {
+                optionsModal.classList.add('hidden');
+            });
+
+            // Close modal when clicking outside
+            window.addEventListener('click', function(event) {
+                if (event.target === optionsModal) {
+                    optionsModal.classList.add('hidden');
+                }
+            });
+        }
+    });
+</script>
+{{end}} 

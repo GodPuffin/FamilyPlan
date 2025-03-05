@@ -1,0 +1,18 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+cmd = "go build -o ./tmp/app.exe ."
+bin = "tmp/app.exe"
+include_ext = ["go", "html"]
+exclude_dir = ["tmp", "vendor", "pb_data"]
+exclude_regex = ["_test.go"]
+
+[log]
+time = true
+
+[color]
+main = "magenta"
+watcher = "cyan"
+build = "yellow"
+runner = "green" 

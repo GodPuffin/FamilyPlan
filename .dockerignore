@@ -1,0 +1,49 @@
+# Git
+.git
+.gitignore
+.github
+
+# Docker
+Dockerfile
+.dockerignore
+
+# PocketBase data
+pb_data/
+tmp/
+
+# Go build artifacts
+app
+bin/
+dist/
+
+# Test files
+*.test
+*.out
+coverage.txt
+coverage.html
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Log files
+*.log
+logs/
+
+# Documentation
+README.md
+CONTRIBUTING.md
+LICENSE 

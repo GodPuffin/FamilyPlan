@@ -1,0 +1,45 @@
+{{define "layout"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}}</title>
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-800">Family Plan Manager</h1>
+            <nav class="mt-4">
+                <ul class="flex space-x-4 items-center">
+                    {{if .isAuthenticated}}
+                        <!-- <li><a href="/family-plans" class="text-blue-600 hover:text-blue-800">My Family Plans</a></li> -->
+                        <li class="flex items-center">
+                            <span class="text-gray-600 mr-4">Signed in as: <span class="font-semibold">{{.username}}</span></span>
+                            <a href="/logout" class="text-red-600 hover:text-red-800">Logout</a>
+                        </li>
+                    {{end}}
+                </ul>
+            </nav>
+        </header>
+        
+        <main>
+            {{template "content" .}}
+        </main>
+        
+        <footer class="mt-12 pt-4 border-t border-gray-200 text-center text-gray-500">
+            <p>Made by <a href="https://github.com/GodPuffin" class="hover:text-gray-700">Marcus</a> 🤓</p>
+        </footer>
+    </div>
+</body>
+</html>
+{{end}} 
