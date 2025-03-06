@@ -74,25 +74,29 @@ jobs:
           WantedBy=multi-user.target
           EOF"
           
-          # Configure Nginx
-          ssh ${{ env.SSH_USER }}@${{ env.SSH_HOST }} "cat > /etc/nginx/sites-available/familyplanmanager << 'EOF'
-          server {
-              server_name ${{ env.DOMAIN }} www.${{ env.DOMAIN }};
-              
-              # Debug logs
-              access_log /var/log/nginx/familyplanmanager_access.log;
-              error_log /var/log/nginx/familyplanmanager_error.log debug;
-              
-              location / {
-                  proxy_pass http://[::1]:8090;
-                  proxy_set_header Host \$host;
-                  proxy_set_header X-Real-IP \$remote_addr;
-                  proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-                  proxy_set_header X-Forwarded-Proto \$scheme;
-                  proxy_read_timeout 90;
-              }
-          }
-          EOF"
+          # Configure Nginx (only if it doesn't exist)
+          ssh ${{ env.SSH_USER }}@${{ env.SSH_HOST }} "
+            if [ ! -f /etc/nginx/sites-available/familyplanmanager ]; then
+                cat > /etc/nginx/sites-available/familyplanmanager << 'EOF'
+                server {
+                    server_name ${{ env.DOMAIN }} www.${{ env.DOMAIN }};
+                    
+                    # Debug logs
+                    access_log /var/log/nginx/familyplanmanager_access.log;
+                    error_log /var/log/nginx/familyplanmanager_error.log debug;
+                    
+                    location / {
+                        proxy_pass http://[::1]:8090;
+                        proxy_set_header Host \$host;
+                        proxy_set_header X-Real-IP \$remote_addr;
+                        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                        proxy_set_header X-Forwarded-Proto \$scheme;
+                        proxy_read_timeout 90;
+                    }
+                }
+                EOF
+            fi
+            "
           
           # Enable site and configure SSL
           ssh ${{ env.SSH_USER }}@${{ env.SSH_HOST }} "
