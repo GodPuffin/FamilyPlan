@@ -43,24 +43,22 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Deploy to DigitalOcean
+      - name: Create app directory
+        run: ssh ${{ env.SSH_USER }}@${{ env.SSH_HOST }} "mkdir -p /var/www/familyplanmanager"
+          
+      - name: Transfer application files
+        run: rsync -avz --exclude 'pb_data' --exclude '.git' ./ ${{ env.SSH_USER }}@${{ env.SSH_HOST }}:/var/www/familyplanmanager/
+          
+      - name: Install dependencies
+        run: ssh ${{ env.SSH_USER }}@${{ env.SSH_HOST }} "apt update && apt install -y nginx certbot python3-certbot-nginx ufw net-tools"
+          
+      - name: Create systemd service
         run: |
-          # Create app directory if it doesn't exist
-          ssh ${{ env.SSH_USER }}@${{ env.SSH_HOST }} "mkdir -p /var/www/familyplanmanager"
-          
-          # Transfer application files
-          rsync -avz --exclude 'pb_data' --exclude '.git' ./ ${{ env.SSH_USER }}@${{ env.SSH_HOST }}:/var/www/familyplanmanager/
-          
-          # Install dependencies on the server
-          ssh ${{ env.SSH_USER }}@${{ env.SSH_HOST }} "apt update && apt install -y nginx certbot python3-certbot-nginx ufw net-tools"
-          
-          # Create systemd service
-          ssh ${{ env.SSH_USER }}@${{ env.SSH_HOST }} "cat > /etc/systemd/system/familyplanmanager.service <<-'EOF'
-
+          ssh ${{ env.SSH_USER }}@${{ env.SSH_HOST }} "cat > /etc/systemd/system/familyplanmanager.service << 'EOFSERVICE'
           [Unit]
           Description=Family Plan Manager
           After=network.target
-          
+
           [Service]
           Type=simple
           User=root
@@ -70,63 +68,63 @@ jobs:
           RestartSec=5s
           StandardOutput=journal
           StandardError=journal
-          
+
           [Install]
           WantedBy=multi-user.target
-          EOF"
+          EOFSERVICE"
           
-          # Configure Nginx (only if it doesn't exist)
+      - name: Configure Nginx
+        run: |
           ssh ${{ env.SSH_USER }}@${{ env.SSH_HOST }} "
-            if [ ! -f /etc/nginx/sites-available/familyplanmanager ]; then
-                cat > /etc/nginx/sites-available/familyplanmanager << 'EOF'
-                server {
-                    server_name familyplanmanager.xyz www.familyplanmanager.xyz;
-                    
-                    # Debug logs
-                    access_log /var/log/nginx/familyplanmanager_access.log;
-                    error_log /var/log/nginx/familyplanmanager_error.log debug;
-                    
-                    location / {
-                        proxy_pass http://[::1]:8090;
-                        proxy_set_header Host \$host;
-                        proxy_set_header X-Real-IP \$remote_addr;
-                        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-                        proxy_set_header X-Forwarded-Proto \$scheme;
-                        proxy_read_timeout 90;
-                    }
-                }
-                EOF
-            fi
-            "
+          if [ ! -f /etc/nginx/sites-available/familyplanmanager ]; then
+          cat > /etc/nginx/sites-available/familyplanmanager << 'EOFNGINX'
+          server {
+              server_name ${{ env.DOMAIN }} www.${{ env.DOMAIN }};
+              
+              # Debug logs
+              access_log /var/log/nginx/familyplanmanager_access.log;
+              error_log /var/log/nginx/familyplanmanager_error.log debug;
+              
+              location / {
+                  proxy_pass http://[::1]:8090;
+                  proxy_set_header Host \$host;
+                  proxy_set_header X-Real-IP \$remote_addr;
+                  proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto \$scheme;
+                  proxy_read_timeout 90;
+              }
+          }
+          EOFNGINX
+          fi"
           
-          # Enable site and configure SSL
+      - name: Configure site and SSL
+        run: |
           ssh ${{ env.SSH_USER }}@${{ env.SSH_HOST }} "
-            # Remove default site to avoid conflicts
-            rm -f /etc/nginx/sites-enabled/default
-            
-            # Link our site config
-            ln -sf /etc/nginx/sites-available/familyplanmanager /etc/nginx/sites-enabled/
-            nginx -t
-            systemctl restart nginx
-            
-            # Only run certbot if SSL is not already configured
-            if [ ! -f /etc/letsencrypt/live/${{ env.DOMAIN }}/fullchain.pem ]; then
-              certbot --nginx -d ${{ env.DOMAIN }} -d www.${{ env.DOMAIN }} --non-interactive --agree-tos --email ${{ secrets.ADMIN_EMAIL }}
-            fi
-            
-            # Configure firewall
-            ufw allow ssh
-            ufw allow http
-            ufw allow https
-            ufw allow from 127.0.0.1 to any port 8090
-            ufw allow from ::1 to any port 8090
-            ufw --force enable
-            
-            # Reload and restart services
-            systemctl daemon-reload
-            systemctl enable familyplanmanager
-            systemctl restart familyplanmanager
-          "
+          # Remove default site to avoid conflicts
+          rm -f /etc/nginx/sites-enabled/default
+
+          # Link our site config
+          ln -sf /etc/nginx/sites-available/familyplanmanager /etc/nginx/sites-enabled/
+          nginx -t
+          systemctl restart nginx
+
+          # Only run certbot if SSL is not already configured
+          if [ ! -f /etc/letsencrypt/live/${{ env.DOMAIN }}/fullchain.pem ]; then
+            certbot --nginx -d ${{ env.DOMAIN }} -d www.${{ env.DOMAIN }} --non-interactive --agree-tos --email ${{ secrets.ADMIN_EMAIL }}
+          fi
+
+          # Configure firewall
+          ufw allow ssh
+          ufw allow http
+          ufw allow https
+          ufw allow from 127.0.0.1 to any port 8090
+          ufw allow from ::1 to any port 8090
+          ufw --force enable
+
+          # Reload and restart services
+          systemctl daemon-reload
+          systemctl enable familyplanmanager
+          systemctl restart familyplanmanager"
 
       - name: Verify Deployment
         run: |
@@ -139,20 +137,19 @@ jobs:
       - name: Setup Backup System
         run: |
           ssh ${{ env.SSH_USER }}@${{ env.SSH_HOST }} "
-            # Create backup directory
-            mkdir -p /root/backups
-            
-            # Create backup script
-            cat > /root/backup_pb_data.sh << 'EOF'
-            #!/bin/bash
-            TIMESTAMP=\$(date +%Y%m%d_%H%M%S)
-            tar -czf /root/backups/pb_data_\$TIMESTAMP.tar.gz /var/www/familyplanmanager/pb_data
-            # Keep only the last 7 backups
-            ls -tp /root/backups/pb_data_* | grep -v '/$' | tail -n +8 | xargs -I {} rm -- {}
-            EOF
-            
-            chmod +x /root/backup_pb_data.sh
-            
-            # Setup daily backup cron job
-            (crontab -l 2>/dev/null || echo '') | grep -v 'backup_pb_data.sh' | echo '0 2 * * * /root/backup_pb_data.sh' | crontab -
-          "
+          # Create backup directory
+          mkdir -p /root/backups
+
+          # Create backup script
+          cat > /root/backup_pb_data.sh << 'EOFBACKUP'
+          #!/bin/bash
+          TIMESTAMP=\$(date +%Y%m%d_%H%M%S)
+          tar -czf /root/backups/pb_data_\$TIMESTAMP.tar.gz /var/www/familyplanmanager/pb_data
+          # Keep only the last 7 backups
+          ls -tp /root/backups/pb_data_* | grep -v '/$' | tail -n +8 | xargs -I {} rm -- {}
+          EOFBACKUP
+
+          chmod +x /root/backup_pb_data.sh
+
+          # Setup daily backup cron job
+          (crontab -l 2>/dev/null || echo '') | grep -v 'backup_pb_data.sh' | echo '0 2 * * * /root/backup_pb_data.sh' | crontab -"
