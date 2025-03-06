@@ -108,10 +108,8 @@ jobs:
           nginx -t
           systemctl restart nginx
 
-          # Only run certbot if SSL is not already configured
-          if [ ! -f /etc/letsencrypt/live/${{ env.DOMAIN }}/fullchain.pem ]; then
-            certbot --nginx -d ${{ env.DOMAIN }} -d www.${{ env.DOMAIN }} --non-interactive --agree-tos --email ${{ secrets.ADMIN_EMAIL }}
-          fi
+          # Configure Certbot for SSL (even if certificates exist)
+          certbot --nginx -d ${{ env.DOMAIN }} -d www.${{ env.DOMAIN }} --non-interactive --agree-tos --email ${{ secrets.ADMIN_EMAIL }} || true
 
           # Configure firewall
           ufw allow ssh
@@ -121,18 +119,37 @@ jobs:
           ufw allow from ::1 to any port 8090
           ufw --force enable
 
+          # Make executable and ensure permissions
+          chmod +x /var/www/familyplanmanager/app
+          
           # Reload and restart services
           systemctl daemon-reload
           systemctl enable familyplanmanager
-          systemctl restart familyplanmanager"
+          systemctl restart familyplanmanager
+          
+          # Verify application is running
+          sleep 5
+          systemctl status familyplanmanager
+          ps aux | grep app
+          netstat -tlnp | grep 8090"
 
       - name: Verify Deployment
         run: |
           # Wait for deployment to stabilize
           sleep 10
           
-          # Check if the application is running
-          curl -I https://${{ env.DOMAIN }} || echo "Deployment may need additional time to stabilize"
+          # Check application status
+          ssh ${{ env.SSH_USER }}@${{ env.SSH_HOST }} "systemctl status familyplanmanager || true"
+          
+          # Check if port is listening
+          ssh ${{ env.SSH_USER }}@${{ env.SSH_HOST }} "netstat -tlnp | grep 8090 || true"
+          
+          # Check nginx config
+          ssh ${{ env.SSH_USER }}@${{ env.SSH_HOST }} "nginx -t"
+          
+          # Test HTTP/HTTPS connectivity
+          curl -I http://${{ env.DOMAIN }} || echo "HTTP test failed but continuing"
+          curl -I https://${{ env.DOMAIN }} || echo "HTTPS test failed but continuing"
 
       - name: Setup Backup System
         run: |
@@ -152,4 +169,4 @@ jobs:
           chmod +x /root/backup_pb_data.sh
 
           # Setup daily backup cron job
-          (crontab -l 2>/dev/null || echo '') | grep -v 'backup_pb_data.sh' | echo '0 2 * * * /root/backup_pb_data.sh' | crontab -"
+          (crontab -l 2>/dev/null || echo '') | grep -v 'backup_pb_data.sh' | { cat; echo '0 2 * * * /root/backup_pb_data.sh'; } | crontab -"
