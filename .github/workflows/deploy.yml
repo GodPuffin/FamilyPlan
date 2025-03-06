@@ -49,12 +49,24 @@ jobs:
         # Load the Docker image
         ssh root@$DROPLET_IP "docker load < /tmp/familyplan-image.tar"
         
-        # Stop and remove any existing container
+        # Check what's using port 8090 and stop it
+        ssh root@$DROPLET_IP "lsof -i :8090 || true"
+        
+        # Find and kill any process using port 8090
+        ssh root@$DROPLET_IP "fuser -k 8090/tcp || true"
+        
+        # Stop and remove any existing container (by name)
         ssh root@$DROPLET_IP "docker stop familyplan-container || true"
         ssh root@$DROPLET_IP "docker rm familyplan-container || true"
         
+        # Also find and remove any container using port 8090
+        ssh root@$DROPLET_IP "for id in \$(docker ps -q); do if docker port \$id | grep -q 8090; then docker stop \$id && docker rm \$id; fi; done || true"
+        
         # Create PocketBase data directory if needed for persistence
-        ssh root@$DROPLET_IP "mkdir -p /var/data/familyplan"
+        ssh root@$DROPLET_IP "mkdir -p /var/data/familyplan && chmod 777 /var/data/familyplan"
+        
+        # Wait a moment to ensure the port is released
+        ssh root@$DROPLET_IP "sleep 5"
         
         # Run the new container with volume mount for data persistence
         ssh root@$DROPLET_IP "docker run -d \
