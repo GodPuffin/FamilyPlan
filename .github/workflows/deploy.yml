@@ -1,0 +1,71 @@
+name: Deploy to DigitalOcean
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+        cache: true
+
+    - name: Install dependencies
+      run: go mod tidy
+
+    - name: Build
+      run: go build -o familyplan .
+
+    - name: Set up SSH
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        DROPLET_IP: ${{ secrets.DROPLET_IP }}
+      run: |
+        mkdir -p ~/.ssh
+        echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H $DROPLET_IP >> ~/.ssh/known_hosts
+
+    - name: Deploy application
+      env:
+        DROPLET_IP: ${{ secrets.DROPLET_IP }}
+        DEPLOY_PATH: /var/www/familyplan
+      run: |
+        ssh root@$DROPLET_IP "mkdir -p $DEPLOY_PATH"
+        # Transfer application files
+        scp familyplan root@$DROPLET_IP:$DEPLOY_PATH/
+        scp -r static root@$DROPLET_IP:$DEPLOY_PATH/
+        scp -r templates root@$DROPLET_IP:$DEPLOY_PATH/
+        
+        # Set up systemd service for running the application
+        echo "[Unit]
+        Description=Family Plan Application Service
+        After=network.target
+
+        [Service]
+        Type=simple
+        User=root
+        WorkingDirectory=$DEPLOY_PATH
+        ExecStart=$DEPLOY_PATH/familyplan
+        Restart=on-failure
+        RestartSec=5
+        Environment=\"PORT=8090\"
+
+        [Install]
+        WantedBy=multi-user.target" | ssh root@$DROPLET_IP "cat > /etc/systemd/system/familyplan.service"
+
+        # Enable and restart the service
+        ssh root@$DROPLET_IP "systemctl daemon-reload && systemctl enable familyplan && systemctl restart familyplan"
+
+    - name: Verify deployment
+      env:
+        DROPLET_IP: ${{ secrets.DROPLET_IP }}
+      run: |
+        echo "Deployment completed. Application should be running at http://$DROPLET_IP:8090"
