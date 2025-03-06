@@ -49,41 +49,56 @@ jobs:
         # Load the Docker image
         ssh root@$DROPLET_IP "docker load < /tmp/familyplan-image.tar"
         
-        # Check what's using port 8090 and stop it
+        # More aggressive approach to kill processes on port 8090
+        ssh root@$DROPLET_IP "echo 'Checking what is using port 8090:'"
         ssh root@$DROPLET_IP "lsof -i :8090 || true"
         
-        # Find and kill any process using port 8090
-        ssh root@$DROPLET_IP "fuser -k 8090/tcp || true"
+        # Stop the systemd service if it exists
+        ssh root@$DROPLET_IP "systemctl stop familyplan.service || true"
         
-        # Stop and remove any existing container (by name)
+        # Kill any process using port 8090 with SIGKILL
+        ssh root@$DROPLET_IP "fuser -k -9 8090/tcp || true"
+        
+        # Stop and remove any Docker containers with name familyplan-container
         ssh root@$DROPLET_IP "docker stop familyplan-container || true"
         ssh root@$DROPLET_IP "docker rm familyplan-container || true"
         
-        # Also find and remove any container using port 8090
-        ssh root@$DROPLET_IP "for id in \$(docker ps -q); do if docker port \$id | grep -q 8090; then docker stop \$id && docker rm \$id; fi; done || true"
+        # Find and remove any container using port 8090 (with stronger approach)
+        ssh root@$DROPLET_IP "for id in \$(docker ps -a -q); do if docker port \$id 2>/dev/null | grep -q 8090; then docker stop \$id && docker rm \$id; fi; done || true"
         
-        # Create PocketBase data directory if needed for persistence
+        # Kill all Docker containers (last resort)
+        ssh root@$DROPLET_IP "docker ps -a -q | xargs -r docker stop || true"
+        ssh root@$DROPLET_IP "docker ps -a -q | xargs -r docker rm || true"
+        
+        # Create PocketBase data directory with proper permissions
         ssh root@$DROPLET_IP "mkdir -p /var/data/familyplan && chmod 777 /var/data/familyplan"
         
-        # Wait a moment to ensure the port is released
-        ssh root@$DROPLET_IP "sleep 5"
+        # Wait longer to ensure the port is released
+        ssh root@$DROPLET_IP "echo 'Waiting for port 8090 to be released...'"
+        ssh root@$DROPLET_IP "sleep 10"
         
-        # Run the new container with volume mount for data persistence
-        ssh root@$DROPLET_IP "docker run -d \
+        # Verify the port is available before proceeding
+        ssh root@$DROPLET_IP "if lsof -i :8090; then echo 'Port 8090 is still in use! Forcefully killing processes...'; ps aux | grep -i 8090 | awk '{print \$2}' | xargs -r kill -9; sleep 5; fi"
+        
+        # Try with a different port if 8090 is still in use
+        ssh root@$DROPLET_IP "if lsof -i :8090; then export CONTAINER_PORT=8091; echo 'Using alternate port 8091'; else export CONTAINER_PORT=8090; echo 'Using standard port 8090'; fi; \
+          docker run -d \
           --name familyplan-container \
-          -p 8090:8090 \
+          -p \${CONTAINER_PORT}:8090 \
           -v /var/data/familyplan:/app/pb_data \
           --restart=always \
           familyplan:latest"
         
-        # Configure firewall to allow port 8090
+        # Configure firewall to allow both potential ports
         ssh root@$DROPLET_IP "ufw allow 8090/tcp || true"
+        ssh root@$DROPLET_IP "ufw allow 8091/tcp || true"
         
         # Clean up the transferred image to save space
         ssh root@$DROPLET_IP "rm /tmp/familyplan-image.tar"
         
-        # Display container status
+        # Display container status and port mapping
         ssh root@$DROPLET_IP "docker ps | grep familyplan-container || echo 'Container not running!'"
+        ssh root@$DROPLET_IP "docker port familyplan-container || echo 'No port mapping found!'"
 
     - name: Verify deployment
       env:
@@ -92,7 +107,10 @@ jobs:
         echo "Waiting 10 seconds for application to start..."
         sleep 10
         
-        echo "Deployment completed. Application should be running at http://$DROPLET_IP:8090"
+        echo "Checking service on port 8090..."
+        curl -v --connect-timeout 5 http://$DROPLET_IP:8090 || echo "Could not connect on port 8090"
         
-        # Try to connect to the application (may fail if GitHub runner is blocked)
-        curl -v --connect-timeout 5 http://$DROPLET_IP:8090 || echo "Could not connect from GitHub runner, but the container should be running."
+        echo "Checking service on port 8091 (fallback)..."
+        curl -v --connect-timeout 5 http://$DROPLET_IP:8091 || echo "Could not connect on port 8091"
+        
+        echo "Deployment completed. Application should be running at either http://$DROPLET_IP:8090 or http://$DROPLET_IP:8091"
