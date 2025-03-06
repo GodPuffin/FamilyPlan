@@ -113,24 +113,74 @@ jobs:
 
           # Fix any IPv6 in nginx config that certbot might have introduced
           sed -i 's/proxy_pass http:\\/\\/\\[::1\\]:8090;/proxy_pass http:\\/\\/127.0.0.1:8090;/g' /etc/nginx/sites-available/familyplanmanager
-          nginx -t
-          systemctl restart nginx
+          
+          # Create Cloudflare IP list file
+          cat > /etc/nginx/cloudflare-ips.conf << 'EOFCLOUDFLARE'
+          # Cloudflare IPv4 ranges
+          set_real_ip_from 173.245.48.0/20;
+          set_real_ip_from 103.21.244.0/22;
+          set_real_ip_from 103.22.200.0/22;
+          set_real_ip_from 103.31.4.0/22;
+          set_real_ip_from 141.101.64.0/18;
+          set_real_ip_from 108.162.192.0/18;
+          set_real_ip_from 190.93.240.0/20;
+          set_real_ip_from 188.114.96.0/20;
+          set_real_ip_from 197.234.240.0/22;
+          set_real_ip_from 198.41.128.0/17;
+          set_real_ip_from 162.158.0.0/15;
+          set_real_ip_from 104.16.0.0/13;
+          set_real_ip_from 104.24.0.0/14;
+          set_real_ip_from 172.64.0.0/13;
+          set_real_ip_from 131.0.72.0/22;
 
-          # Configure firewall
+          # Cloudflare IPv6 ranges
+          set_real_ip_from 2400:cb00::/32;
+          set_real_ip_from 2606:4700::/32;
+          set_real_ip_from 2803:f800::/32;
+          set_real_ip_from 2405:b500::/32;
+          set_real_ip_from 2405:8100::/32;
+          set_real_ip_from 2a06:98c0::/29;
+          set_real_ip_from 2c0f:f248::/32;
+
+          real_ip_header CF-Connecting-IP;
+          EOFCLOUDFLARE
+
+          # Update nginx config to include Cloudflare IP ranges
+          sed -i '/server_name/a \\n    # Include Cloudflare IP ranges\\n    include /etc/nginx/cloudflare-ips.conf;' /etc/nginx/sites-available/familyplanmanager
+          
+          # Configure direct connection from Cloudflare to origin server
+          # First, get the current Cloudflare IPs
+          CF_IPV4_URL='https://www.cloudflare.com/ips-v4'
+          CF_IPV6_URL='https://www.cloudflare.com/ips-v6'
+          CF_IPV4=\$(curl -s \$CF_IPV4_URL)
+          CF_IPV6=\$(curl -s \$CF_IPV6_URL)
+          
+          # Reset and configure firewall
+          ufw --force reset
+          ufw default deny incoming
+          ufw default allow outgoing
           ufw allow ssh
           ufw allow http
           ufw allow https
           
-          # Ensure localhost can access port 8090
-          ufw delete allow from 127.0.0.1 to any port 8090 >/dev/null 2>&1 || true
-          ufw delete allow from ::1 to any port 8090 >/dev/null 2>&1 || true
+          # Allow Cloudflare IPs to access port 80 and 443
+          for ip in \$CF_IPV4; do
+            ufw allow from \$ip to any port 80 proto tcp
+            ufw allow from \$ip to any port 443 proto tcp
+          done
+          
+          # Allow access to the app from localhost
           ufw allow from 127.0.0.1 to any port 8090
+          
+          # Enable the firewall
           ufw --force enable
-
+          
           # Make executable and ensure permissions
           chmod +x /var/www/familyplanmanager/app
           
           # Reload and restart services
+          nginx -t
+          systemctl restart nginx
           systemctl daemon-reload
           systemctl enable familyplanmanager
           systemctl restart familyplanmanager
