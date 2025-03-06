@@ -161,8 +161,8 @@ jobs:
             ufw allow from \$ip to any port 443 proto tcp
           done
           
-          # Allow access to the app from localhost
-          ufw allow from 127.0.0.1 to any port 8090
+          # Allow access to the app from anywhere (not just localhost)
+          ufw allow 8090/tcp
           
           # Enable the firewall
           ufw --force enable
