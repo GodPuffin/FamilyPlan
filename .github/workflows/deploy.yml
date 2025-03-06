@@ -180,6 +180,33 @@ jobs:
           systemctl status familyplanmanager
           netstat -tlnp | grep 8090"
 
+      # Add a step to configure DigitalOcean Cloud Firewall
+      - name: Configure DigitalOcean Cloud Firewall
+        run: |
+          # Get Droplet ID
+          DROPLET_ID=$(doctl compute droplet list --format ID,Name --no-header | grep ${{ env.SSH_HOST }} | awk '{print $1}')
+          
+          # Check if there's an existing firewall for this droplet
+          EXISTING_FIREWALL=$(doctl compute firewall list --format ID,Name,DropletIDs --no-header | grep $DROPLET_ID || echo "")
+          
+          if [ -z "$EXISTING_FIREWALL" ]; then
+            # Create a new firewall if one doesn't exist
+            echo "Creating new firewall for droplet $DROPLET_ID"
+            doctl compute firewall create \
+              --name "firewall-${{ env.DOMAIN }}" \
+              --inbound-rules "protocol:tcp,ports:22,address:0.0.0.0/0 protocol:tcp,ports:80,address:0.0.0.0/0 protocol:tcp,ports:443,address:0.0.0.0/0 protocol:tcp,ports:8090,address:0.0.0.0/0" \
+              --outbound-rules "protocol:tcp,ports:all,address:0.0.0.0/0 protocol:udp,ports:all,address:0.0.0.0/0 protocol:icmp,address:0.0.0.0/0" \
+              --droplet-ids $DROPLET_ID
+          else
+            # Get the firewall ID
+            FIREWALL_ID=$(echo $EXISTING_FIREWALL | awk '{print $1}')
+            echo "Updating existing firewall $FIREWALL_ID for droplet $DROPLET_ID"
+            
+            # Add a rule for port 8090 to the existing firewall
+            doctl compute firewall add-rules $FIREWALL_ID \
+              --inbound-rules "protocol:tcp,ports:8090,address:0.0.0.0/0"
+          fi
+
       - name: Verify Deployment
         run: |
           # Wait for deployment to stabilize
@@ -197,6 +224,10 @@ jobs:
           # Test HTTP/HTTPS connectivity
           curl -I http://${{ env.DOMAIN }} || echo "HTTP test failed but continuing"
           curl -I https://${{ env.DOMAIN }} || echo "HTTPS test failed but continuing"
+          
+          # Also test direct access
+          echo "Testing direct access to application on port 8090"
+          curl -I http://${{ env.SSH_HOST }}:8090 || echo "Direct access test failed but continuing"
 
       - name: Setup Backup System
         run: |
