@@ -27,6 +27,7 @@ func setupRoutes(app *pocketbase.PocketBase, e *echo.Echo, templatesFS embed.FS)
 	authenticated := e.Group("", requireAuth)
 
 	// Profile routes
+	authenticated.GET("/profile", handleProfilePage(app, templatesFS))
 	authenticated.POST("/profile", handleProfileUpdate(app))
 
 	// Family plans routes
@@ -44,4 +45,10 @@ func setupRoutes(app *pocketbase.PocketBase, e *echo.Echo, templatesFS embed.FS)
 	authenticated.POST("/:join_code/leave", handleLeavePlan(app))
 	authenticated.POST("/:join_code/delete", handleDeletePlan(app))
 	authenticated.POST("/:join_code/update", handleUpdatePlan(app))
+
+	// Payment actions
+	authenticated.POST("/:join_code/claim-payment", handleClaimPayment(app))
+	authenticated.POST("/:join_code/approve-payment", handleApprovePayment(app))
+	authenticated.POST("/:join_code/reject-payment", handleRejectPayment(app))
+	authenticated.POST("/:join_code/add-payment", handleAddManualPayment(app))
 }

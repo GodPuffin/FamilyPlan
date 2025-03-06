@@ -2,6 +2,7 @@ package main
 
 import (
 	"embed"
+	"fmt"
 	"html/template"
 	"log"
 	"os"
@@ -10,8 +11,6 @@ import (
 	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/plugins/migratecmd"
-
-	_ "familyplan/migrations"
 )
 
 //go:embed templates/*
@@ -21,6 +20,8 @@ var templatesFS embed.FS
 var staticFS embed.FS
 
 func main() {
+	fmt.Println("Starting FamilyPlan application...")
+
 	app := pocketbase.New()
 
 	// Register migrations with automigration enabled
@@ -55,6 +56,7 @@ func main() {
 	os.Args = append([]string{os.Args[0], "serve"}, os.Args[1:]...)
 
 	// Start the server
+	fmt.Println("Server started on http://localhost:8090")
 	if err := app.Start(); err != nil {
 		log.Fatal(err)
 	}

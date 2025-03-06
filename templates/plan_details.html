@@ -48,7 +48,7 @@
                     <a href="/family-plans" class="text-blue-500 hover:text-blue-700">Back to Plans</a>
                 </div>
                 <div class="mt-4 flex flex-wrap gap-3">
-                    <div class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
+                    <div class="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm">
                         ${{.plan.Cost}}/month
                     </div>
                     <div class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
@@ -62,7 +62,62 @@
                     <div class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm">
                         Owner
                     </div>
+                    {{else}}
+                    <div class="{{if lt .user_balance 0.0}}bg-red-100 text-red-800{{else if gt .user_balance 0.0}}bg-green-100 text-green-800{{else}}bg-gray-100 text-gray-800{{end}} px-3 py-1 rounded-full text-sm">
+                        Balance: {{formatMoney .user_balance}}
+                    </div>
                     {{end}}
+                </div>
+            </div>
+
+            <!-- Key Stats Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 my-6">
+                <!-- Cost Per Member Card -->
+                <div class="bg-white p-4 rounded-lg shadow border-l-4 border-purple-500">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 bg-purple-100 p-2 rounded-md">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-500">Cost Per Member</p>
+                            <p class="text-lg font-semibold text-gray-900">{{formatMoney (div .plan.Cost (float64 .total_members))}}</p>
+                            <p class="text-xs text-gray-500">per month</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Total Money Saved Card -->
+                <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 bg-blue-100 p-2 rounded-md">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-500">Total Money Saved</p>
+                            <p class="text-lg font-semibold text-gray-900">{{formatMoney .total_savings}}</p>
+                            <p class="text-xs text-gray-500">vs. individual subscriptions</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Plan Lifespan Card -->
+                <div class="bg-white p-4 rounded-lg shadow border-l-4 border-green-500">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 bg-green-100 p-2 rounded-md">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-500">Plan Age</p>
+                            <p class="text-lg font-semibold text-gray-900">{{.plan_age_days}} days</p>
+                            <p class="text-xs text-gray-500">since creation</p>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -72,19 +127,43 @@
                 <div class="space-y-3">
                     {{range .members}}
                     <div class="flex justify-between items-center p-3 border rounded-lg">
-                        <div class="flex items-center">
+                        <div class="flex items-center flex-1">
                             <div class="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-700">
-                                {{slice .Username 0 1 | upper}}
-                            </div>
-                            <div class="ml-3">
-                                <p class="font-medium">{{if .Name}}{{.Name}}{{else}}{{.Username}}{{end}}</p>
-                                {{if eq .Id $.plan.Owner}}
-                                <span class="text-xs text-yellow-800 bg-yellow-100 px-2 py-0.5 rounded">Owner</span>
+                                {{if .Name}}
+                                    {{slice .Name 0 1 | upper}}
+                                {{else}}
+                                    {{slice .Username 0 1 | upper}}
                                 {{end}}
                             </div>
+                            <div class="ml-3 flex-1">
+                                <div class="flex justify-between">
+                                    <div>
+                                        <p class="font-medium">{{if .Name}}{{.Name}}{{else}}{{.Username}}{{end}}</p>
+                                        <div class="flex flex-wrap gap-1 mt-1">
+                                            {{if eq .Id $.plan.Owner}}
+                                            <span class="text-xs text-yellow-800 bg-yellow-100 px-2 py-0.5 rounded">Owner</span>
+                                            {{end}}
+                                            {{if ne .Id $.plan.Owner}}
+                                            <span class="text-xs {{if lt .Balance 0.0}}text-red-800 bg-red-100{{else if gt .Balance 0.0}}text-green-800 bg-green-100{{else}}text-gray-800 bg-gray-100{{end}} px-2 py-0.5 rounded">
+                                                Balance: {{formatMoney .Balance}}
+                                            </span>
+                                            {{end}}
+                                            {{if .LeaveRequested}}
+                                            <span class="text-xs text-red-800 bg-red-100 px-2 py-0.5 rounded">Requested to leave</span>
+                                            {{end}}
+                                            {{if .DateEnded}}
+                                            <span class="text-xs text-gray-800 bg-gray-100 px-2 py-0.5 rounded">Left on {{slice .DateEnded 0 10}}</span>
+                                            {{end}}
+                                        </div>
+                                    </div>
+                                    {{if and (ne .Id $.plan.Owner) (or (eq .Id $.userId) $.is_owner)}}
+                                    <!-- Balance moved to name line -->
+                                    {{end}}
+                                </div>
+                            </div>
                         </div>
-                        <div>
-                            {{if and $.is_owner (ne .Id $.plan.Owner)}}
+                        <div class="flex items-center space-x-2">
+                            {{if and $.is_owner (ne .Id $.plan.Owner) (not .LeaveRequested)}}
                             <form action="/{{$.plan.JoinCode}}/remove-member" method="post" class="inline" onsubmit="return confirm('Are you sure you want to remove {{.Username}} from this plan?');">
                                 <input type="hidden" name="user_id" value="{{.Id}}">
                                 <button type="submit"
@@ -92,12 +171,173 @@
                                     Remove
                                 </button>
                             </form>
+                            {{if and .LeaveRequested (lt .Balance 0.0)}}
+                            <span class="text-xs text-gray-500">(will leave once balance is settled)</span>
+                            {{end}}
                             {{end}}
                         </div>
                     </div>
                     {{end}}
                 </div>
             </div>
+
+            <!-- Your Payments (For non-owner members) -->
+            {{if and .is_member (not .is_owner)}}
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="text-lg font-semibold mb-4">Your Payments</h3>
+                    <button type="button" id="claimPaymentBtn" 
+                        class="bg-blue-500 hover:bg-blue-700 text-white text-sm py-1 px-3 rounded focus:outline-none"
+                        onclick="console.log('Claim button clicked via inline handler'); var modal = document.getElementById('claimPaymentModal'); if(modal) { modal.classList.remove('hidden'); console.log('Modal shown'); } else { console.error('Modal not found!'); }">
+                        Claim Payment
+                    </button>
+                </div>
+                
+                {{if .user_payments}}
+                <div class="mt-4 overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {{range .user_payments}}
+                            <tr>
+                                <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{{.Date}}</td>
+                                <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{{formatMoney .Amount}}</td>
+                                <td class="px-4 py-2 whitespace-nowrap text-sm">
+                                    {{if eq .Status "approved"}}
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                        Approved
+                                    </span>
+                                    {{else if eq .Status "rejected"}}
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                        Rejected
+                                    </span>
+                                    {{else}}
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                        Pending
+                                    </span>
+                                    {{end}}
+                                </td>
+                                <td class="px-4 py-2 text-sm text-gray-900">{{if .Notes}}{{.Notes}}{{else}}-{{end}}</td>
+                            </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                </div>
+                {{else}}
+                <p class="text-sm text-gray-500 italic">You haven't made any payments yet.</p>
+                {{end}}
+            {{end}}
+
+            <!-- All Member Payments Section (Only for owner) -->
+            {{if .is_owner}}
+            <div class="mb-8">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold">Member Payments</h3>
+                    <button id="addPaymentBtn" class="bg-blue-500 hover:bg-blue-700 text-white text-sm py-1 px-3 rounded focus:outline-none">
+                        Add Manual Payment
+                    </button>
+                </div>
+                
+                {{if .all_payments}}
+                <div class="mt-4 overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Member</th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {{range .all_payments}}
+                            <tr>
+                                <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{{if .Name}}{{.Name}}{{else}}{{.Username}}{{end}}</td>
+                                <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{{.Date}}</td>
+                                <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{{formatMoney .Amount}}</td>
+                                <td class="px-4 py-2 whitespace-nowrap text-sm">
+                                    {{if eq .Status "approved"}}
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                        Approved
+                                    </span>
+                                    {{else if eq .Status "rejected"}}
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                        Rejected
+                                    </span>
+                                    {{else}}
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                        Pending
+                                    </span>
+                                    {{end}}
+                                </td>
+                                <td class="px-4 py-2 text-sm text-gray-900">{{if .Notes}}{{.Notes}}{{else}}-{{end}}</td>
+                            </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                </div>
+                {{else}}
+                <p class="text-sm text-gray-500 italic">No member payments yet.</p>
+                {{end}}
+            </div>
+            {{end}}
+
+            <!-- Pending Payments Section (Only for owner) -->
+            {{if and .is_owner .pending_payments}}
+            <div class="mb-8">
+                <h3 class="text-lg font-semibold mb-4">Pending Payment Claims</h3>
+                <div class="space-y-3">
+                    {{range .pending_payments}}
+                    <div class="flex justify-between items-center p-3 border rounded-lg">
+                        <div class="flex items-center flex-1">
+                            <div class="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-700">
+                                {{if .Name}}
+                                    {{slice .Name 0 1 | upper}}
+                                {{else}}
+                                    {{slice .Username 0 1 | upper}}
+                                {{end}}
+                            </div>
+                            <div class="ml-3 flex-1">
+                                <p class="font-medium">{{if .Name}}{{.Name}}{{else}}{{.Username}}{{end}}</p>
+                                <div class="flex flex-col sm:flex-row sm:items-center text-sm text-gray-500 mt-1">
+                                    <div class="flex-1">
+                                        <p><span class="font-semibold">Amount:</span> {{formatMoney .Amount}}</p>
+                                        <p><span class="font-semibold">Date:</span> {{.Date}}</p>
+                                        {{if .Notes}}
+                                        <p><span class="font-semibold">Notes:</span> {{.Notes}}</p>
+                                        {{end}}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+                            <form action="/{{$.plan.JoinCode}}/approve-payment" method="post" class="inline">
+                                <input type="hidden" name="payment_id" value="{{.Id}}">
+                                <button type="submit"
+                                    class="bg-green-500 hover:bg-green-700 text-white py-1 px-3 rounded text-sm focus:outline-none w-full sm:w-auto">
+                                    Approve
+                                </button>
+                            </form>
+                            <form action="/{{$.plan.JoinCode}}/reject-payment" method="post" class="inline">
+                                <input type="hidden" name="payment_id" value="{{.Id}}">
+                                <button type="submit"
+                                    class="bg-red-500 hover:bg-red-700 text-white py-1 px-3 rounded text-sm focus:outline-none w-full sm:w-auto">
+                                    Reject
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {{end}}
+                </div>
+            </div>
+            {{end}}
 
             <!-- Invitation Code Section (Only visible to owner) -->
             {{if .is_owner}}
@@ -110,10 +350,10 @@
                     </span>
                     <button class="absolute right-3 top-3 text-gray-500 hover:text-gray-700" id="copyCodeBtn"
                         data-code="{{.plan.JoinCode}}">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
-                            stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                        <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-clipboard">
+                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                            <path d="M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2" />
+                            <path d="M9 3m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v0a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z" />
                         </svg>
                         <span id="copyFeedback" class="hidden absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs py-1 px-2 rounded opacity-0 transition-opacity duration-300">
                             Copied!
@@ -173,14 +413,32 @@
             <!-- Leave Plan Button (For non-owners) -->
             {{if and .is_member (not .is_owner)}}
             <div class="mt-8 border-t pt-6">
-                <h3 class="text-lg font-semibold text-gray-800 mb-3">Leave Plan</h3>
+                <h3 class="text-lg font-semibold mb-4">Leave Plan</h3>
                 <p class="text-gray-600 mb-4">If you no longer want to be part of this plan, you can leave at any time.</p>
+                
+                {{if lt .user_balance 0.0}}
+                <div class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                    <p class="text-yellow-800">
+                        <strong>Note:</strong> Your current balance is {{formatMoney .user_balance}}. If you request to leave now, your membership will remain active until you've paid your outstanding balance.
+                    </p>
+                </div>
+                {{end}}
+                
+                {{if and .existingMembership (.existingMembership.GetBool "leave_requested")}}
+                <div class="p-3 bg-gray-50 border border-gray-200 rounded-md">
+                    <p class="text-gray-700">
+                        <strong>Leave Request Pending</strong>
+                    </p>
+                    <p class="text-sm text-gray-600 mt-1">You've requested to leave this plan. Your membership will be terminated once your balance is settled.</p>
+                </div>
+                {{else}}
                 <form action="/{{.plan.JoinCode}}/leave" method="post" onsubmit="return confirm('Are you sure you want to leave this plan?');">
                     <button type="submit"
-                        class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none">
-                        Leave Plan
+                        class="bg-gray-500 hover:bg-gray-700 text-white text-sm py-1 px-3 rounded focus:outline-none">
+                        {{if lt .user_balance 0.0}}Request to Leave{{else}}Leave Plan{{end}}
                     </button>
                 </form>
+                {{end}}
             </div>
             {{end}}
 
@@ -216,6 +474,12 @@
                                 <input type="number" id="planCost" name="cost" step="0.01" min="0" value="{{.plan.Cost}}"
                                     class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
                             </div>
+                            <div class="mb-6">
+                                <label for="individualCost" class="block text-gray-700 text-sm font-bold mb-2">Individual Subscription Cost ($)</label>
+                                <input type="number" id="individualCost" name="individual_cost" step="0.01" min="0" value="{{.plan.IndividualCost}}"
+                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                                <p class="text-gray-600 text-xs italic mt-1">How much would each person pay for their own subscription</p>
+                            </div>
                             <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none w-full">
                                 Update Plan
                             </button>
@@ -236,47 +500,124 @@
                 </div>
             </div>
             {{end}}
+
+            <!-- Add Manual Payment Modal (Owner only) -->
+            {{if .is_owner}}
+            <div id="addPaymentModal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden">
+                <div class="bg-white rounded-lg p-6 max-w-md w-full">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-bold">Add Manual Payment</h3>
+                        <button id="closeAddPaymentModalBtn" class="text-gray-500 hover:text-gray-700">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <form action="/{{.plan.JoinCode}}/add-payment" method="post">
+                        <div class="mb-4">
+                            <label for="memberSelect" class="block text-gray-700 text-sm font-bold mb-2">Member</label>
+                            <select id="memberSelect" name="user_id" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                                <option value="">Select a member</option>
+                                {{range .members}}
+                                {{if ne .Id $.plan.Owner}}
+                                <option value="{{.Id}}">{{if .Name}}{{.Name}}{{else}}{{.Username}}{{end}}</option>
+                                {{end}}
+                                {{end}}
+                            </select>
+                        </div>
+                        <div class="mb-4">
+                            <label for="manualAmount" class="block text-gray-700 text-sm font-bold mb-2">Amount ($)</label>
+                            <input type="number" id="manualAmount" name="amount" step="0.01"
+                                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                            <p class="text-xs text-gray-600 mt-1">Positive values add to the member's balance, negative values subtract from it.</p>
+                        </div>
+                        <div class="mb-6">
+                            <label for="manualNotes" class="block text-gray-700 text-sm font-bold mb-2">Notes (Optional)</label>
+                            <textarea id="manualNotes" name="notes" rows="2"
+                                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"></textarea>
+                        </div>
+                        <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none w-full">
+                            Add Payment
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {{end}}
+
+            <!-- Claim Payment Modal (Always present in the DOM, but only functional for non-owner members) -->
+            <div id="claimPaymentModal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden" data-modal-type="claim-payment">
+                <div class="bg-white rounded-lg p-6 max-w-md w-full">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-bold">Claim Payment</h3>
+                        <button id="closeClaimModalBtn" class="text-gray-500 hover:text-gray-700">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <form action="/{{.plan.JoinCode}}/claim-payment" method="post">
+                        <div class="mb-4">
+                            <label for="amount" class="block text-gray-700 text-sm font-bold mb-2">Amount ($)</label>
+                            <input type="number" id="amount" name="amount" step="0.01" min="0.01"
+                                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                        </div>
+                        <div class="mb-6">
+                            <label for="notes" class="block text-gray-700 text-sm font-bold mb-2">Notes (Optional)</label>
+                            <textarea id="notes" name="notes" rows="2"
+                                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"></textarea>
+                        </div>
+                        <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none w-full">
+                            Submit Payment Claim
+                        </button>
+                    </form>
+                </div>
+            </div>
         {{end}}
     </div>
 </div>
 
 <script>
-    // Copy invitation code to clipboard
     document.addEventListener('DOMContentLoaded', function() {
+        console.log("Script loaded");
+        
+        // Copy invitation code to clipboard
         const copyBtn = document.getElementById('copyCodeBtn');
         if (copyBtn) {
+            console.log("Copy button found");
             copyBtn.addEventListener('click', function() {
                 const code = this.getAttribute('data-code');
                 const feedbackEl = document.getElementById('copyFeedback');
                 
                 navigator.clipboard.writeText(code).then(function() {
-                    // Show tooltip feedback
-                    feedbackEl.classList.remove('hidden');
-                    setTimeout(() => {
-                        feedbackEl.classList.add('opacity-100');
-                    }, 10);
+                    console.log("Code copied to clipboard");
+                    // Show feedback
+                    feedbackEl.classList.remove('opacity-0');
+                    feedbackEl.classList.add('opacity-100');
                     
-                    // Reset after delay
+                    // Hide feedback after 2 seconds
                     setTimeout(function() {
                         feedbackEl.classList.remove('opacity-100');
-                        setTimeout(() => {
-                            feedbackEl.classList.add('hidden');
-                        }, 300);
-                    }, 2000);
-                }).catch(function() {
-                    // Handle error
-                    feedbackEl.textContent = 'Failed to copy';
-                    feedbackEl.classList.remove('hidden');
-                    feedbackEl.classList.add('opacity-100', 'bg-red-800');
-                    
-                    setTimeout(function() {
-                        feedbackEl.classList.remove('opacity-100');
-                        setTimeout(() => {
-                            feedbackEl.classList.add('hidden');
-                            feedbackEl.classList.remove('bg-red-800');
+                        feedbackEl.classList.add('opacity-0');
+                        
+                        // Reset text after fade out
+                        setTimeout(function() {
                             feedbackEl.textContent = 'Copied!';
                         }, 300);
                     }, 2000);
+                }).catch(function() {
+                    console.error("Failed to copy code");
+                    if (feedbackEl) {
+                        feedbackEl.textContent = 'Failed to copy';
+                        feedbackEl.classList.remove('opacity-0');
+                        feedbackEl.classList.add('opacity-100');
+                        
+                        setTimeout(function() {
+                            feedbackEl.classList.remove('opacity-100');
+                            feedbackEl.classList.add('opacity-0');
+                        }, 2000);
+                    }
                 });
             });
         }
@@ -284,16 +625,19 @@
         // Options Modal
         const optionsModal = document.getElementById('optionsModal');
         const openOptionsBtn = document.getElementById('openOptionsBtn');
-        const closeOptionsBtn = document.getElementById('closeOptionsBtn');
-
-        if (optionsModal && openOptionsBtn && closeOptionsBtn) {
+        if (openOptionsBtn && optionsModal) {
+            console.log("Options modal found");
             openOptionsBtn.addEventListener('click', function() {
+                console.log("Opening options modal");
                 optionsModal.classList.remove('hidden');
             });
 
-            closeOptionsBtn.addEventListener('click', function() {
-                optionsModal.classList.add('hidden');
-            });
+            const closeOptionsBtn = document.getElementById('closeOptionsBtn');
+            if (closeOptionsBtn) {
+                closeOptionsBtn.addEventListener('click', function() {
+                    optionsModal.classList.add('hidden');
+                });
+            }
 
             // Close modal when clicking outside
             window.addEventListener('click', function(event) {
@@ -301,6 +645,67 @@
                     optionsModal.classList.add('hidden');
                 }
             });
+        }
+        
+        // Claim Payment Modal - Simplified direct access approach
+        console.log("Setting up claim payment handling");
+        
+        // Check if modal exists
+        const claimPaymentModal = document.getElementById('claimPaymentModal');
+        if (claimPaymentModal) {
+            console.log("Claim payment modal found in DOM");
+            
+            // Add direct click handler to close button
+            const closeClaimModalBtn = document.getElementById('closeClaimModalBtn');
+            if (closeClaimModalBtn) {
+                console.log("Close claim modal button found");
+                closeClaimModalBtn.addEventListener('click', function() {
+                    console.log("Close button clicked");
+                    claimPaymentModal.classList.add('hidden');
+                });
+            }
+            
+            // Close modal when clicking outside
+            window.addEventListener('click', function(event) {
+                if (event.target === claimPaymentModal) {
+                    console.log("Clicked outside claim payment modal - closing");
+                    claimPaymentModal.classList.add('hidden');
+                }
+            });
+        } else {
+            console.error("Claim payment modal not found in DOM!");
+        }
+        
+        // Add Payment Modal (Owner only)
+        const addPaymentBtn = document.getElementById('addPaymentBtn');
+        if (addPaymentBtn) {
+            console.log("Add payment button found");
+            const addPaymentModal = document.getElementById('addPaymentModal');
+            if (addPaymentModal) {
+                console.log("Add payment modal found");
+                addPaymentBtn.addEventListener('click', function() {
+                    console.log("Opening add payment modal");
+                    addPaymentModal.classList.remove('hidden');
+                });
+                
+                const closeAddPaymentModalBtn = document.getElementById('closeAddPaymentModalBtn');
+                if (closeAddPaymentModalBtn) {
+                    closeAddPaymentModalBtn.addEventListener('click', function() {
+                        addPaymentModal.classList.add('hidden');
+                    });
+                }
+                
+                // Close modal when clicking outside
+                window.addEventListener('click', function(event) {
+                    if (event.target === addPaymentModal) {
+                        addPaymentModal.classList.add('hidden');
+                    }
+                });
+            } else {
+                console.log("Add payment modal not found");
+            }
+        } else {
+            console.log("Add payment button not found");
         }
     });
 </script>

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/pocketbase"
@@ -46,50 +47,71 @@ func handleFamilyPlansList(app *pocketbase.PocketBase, templatesFS embed.FS) ech
 
 		// Get plans for each membership
 		planMap := make(map[string]*models.Record)
+		membershipMap := make(map[string]*models.Record) // Map to store user's membership in each plan
+
 		for _, record := range ownedPlansRecords {
 			planMap[record.Id] = record
 		}
 
 		for _, membership := range memberships {
 			planId := membership.GetString("plan_id")
+			membershipMap[planId] = membership
 
 			if _, exists := planMap[planId]; !exists {
 				plan, err := app.Dao().FindRecordById(plansCollection.Id, planId)
 				if err != nil {
 					continue
 				}
-				planMap[planId] = plan
+				planMap[plan.Id] = plan
 			}
 		}
 
-		// Convert to slice for template
-		uniquePlanMap := make(map[string]*models.Record)
-		for id, plan := range planMap {
-			uniquePlanMap[id] = plan
-		}
-
+		// Convert to a list of FamilyPlan structs
 		plans := []FamilyPlan{}
-		for _, record := range uniquePlanMap {
-			// Count members
-			membersCount, err := app.Dao().FindRecordsByFilter(membershipsCollection.Id,
-				fmt.Sprintf("plan_id = '%s'", record.Id), "", 100, 0)
-			if err != nil {
+		for _, planRecord := range planMap {
+			ownerSlice := planRecord.GetStringSlice("owner")
+			if len(ownerSlice) == 0 {
 				continue
 			}
 
-			// Add plan to list
-			plan := FamilyPlan{
-				Id:           record.Id,
-				Name:         record.GetString("name"),
-				Description:  record.GetString("description"),
-				Cost:         record.GetFloat("cost"),
-				Owner:        record.GetStringSlice("owner")[0],
-				JoinCode:     record.GetString("join_code"),
-				CreatedAt:    record.GetDateTime("created").String(),
-				MembersCount: len(membersCount),
+			// Count members
+			memberCount, err := app.Dao().FindRecordsByFilter(membershipsCollection.Id,
+				fmt.Sprintf("plan_id = '%s'", planRecord.Id), "", 100, 0)
+			membersCount := 0
+			if err == nil {
+				// Only count active memberships that haven't left (owner is already counted separately)
+				for _, member := range memberCount {
+					dateEnded := member.GetDateTime("date_ended")
+					if !member.GetBool("leave_requested") && dateEnded.IsZero() {
+						membersCount++
+					}
+				}
 			}
 
-			plans = append(plans, plan)
+			// Calculate balance for this plan if user is a member (not owner)
+			var balance float64 = 0.0
+			isOwner := ownerSlice[0] == session.UserId
+
+			if !isOwner && membershipMap[planRecord.Id] != nil {
+				// Only calculate balance for plans where user is a member (not owner)
+				balanceAmount, err := calculateMemberBalance(app, planRecord.Id, session.UserId)
+				if err == nil {
+					balance = balanceAmount
+				}
+			}
+
+			plans = append(plans, FamilyPlan{
+				Id:             planRecord.Id,
+				Name:           planRecord.GetString("name"),
+				Description:    planRecord.GetString("description"),
+				Cost:           planRecord.GetFloat("cost"),
+				IndividualCost: planRecord.GetFloat("individual_cost"),
+				Owner:          ownerSlice[0],
+				JoinCode:       planRecord.GetString("join_code"),
+				CreatedAt:      planRecord.GetDateTime("created").String(),
+				MembersCount:   membersCount,
+				Balance:        balance,
+			})
 		}
 
 		// Parse and render the template
@@ -103,6 +125,24 @@ func handleFamilyPlansList(app *pocketbase.PocketBase, templatesFS embed.FS) ech
 					j = len(s)
 				}
 				return s[i:j]
+			},
+			"formatMoney": func(amount float64) string {
+				return fmt.Sprintf("$%.2f", amount)
+			},
+			"div": func(a, b float64) float64 {
+				if b == 0 {
+					return 0
+				}
+				return a / b
+			},
+			"mul": func(a, b float64) float64 {
+				return a * b
+			},
+			"sub": func(a, b float64) float64 {
+				return a - b
+			},
+			"float64": func(i int) float64 {
+				return float64(i)
 			},
 		}
 
@@ -131,15 +171,23 @@ func handleCreateFamilyPlan(app *pocketbase.PocketBase) echo.HandlerFunc {
 		name := c.FormValue("name")
 		description := c.FormValue("description")
 		costStr := c.FormValue("cost")
+		individualCostStr := c.FormValue("individual_cost")
 
 		// Validate required fields
-		if name == "" || costStr == "" {
+		if name == "" || costStr == "" || individualCostStr == "" {
 			// Handle validation error
 			return c.Redirect(http.StatusSeeOther, "/family-plans")
 		}
 
 		// Parse cost to float
 		cost, err := strconv.ParseFloat(costStr, 64)
+		if err != nil {
+			// Handle parsing error
+			return c.Redirect(http.StatusSeeOther, "/family-plans")
+		}
+
+		// Parse individual cost to float
+		individualCost, err := strconv.ParseFloat(individualCostStr, 64)
 		if err != nil {
 			// Handle parsing error
 			return c.Redirect(http.StatusSeeOther, "/family-plans")
@@ -159,6 +207,7 @@ func handleCreateFamilyPlan(app *pocketbase.PocketBase) echo.HandlerFunc {
 		newPlan.Set("name", name)
 		newPlan.Set("description", description)
 		newPlan.Set("cost", cost)
+		newPlan.Set("individual_cost", individualCost)
 		newPlan.Set("owner", []string{session.UserId})
 		newPlan.Set("join_code", joinCode)
 
@@ -285,6 +334,24 @@ func handlePlanDetails(app *pocketbase.PocketBase, templatesFS embed.FS) echo.Ha
 					}
 					return s[i:j]
 				},
+				"formatMoney": func(amount float64) string {
+					return fmt.Sprintf("$%.2f", amount)
+				},
+				"div": func(a, b float64) float64 {
+					if b == 0 {
+						return 0
+					}
+					return a / b
+				},
+				"mul": func(a, b float64) float64 {
+					return a * b
+				},
+				"sub": func(a, b float64) float64 {
+					return a - b
+				},
+				"float64": func(i int) float64 {
+					return float64(i)
+				},
 			}
 
 			tmpl, err := template.New("layout").Funcs(funcMap).ParseFS(templatesFS, "templates/layout.html", "templates/plan_details.html")
@@ -337,13 +404,14 @@ func handlePlanDetails(app *pocketbase.PocketBase, templatesFS embed.FS) echo.Ha
 
 		// Convert plan record to struct
 		familyPlan := FamilyPlan{
-			Id:          plan.Id,
-			Name:        plan.GetString("name"),
-			Description: plan.GetString("description"),
-			Cost:        plan.GetFloat("cost"),
-			Owner:       ownerSlice[0],
-			JoinCode:    plan.GetString("join_code"),
-			CreatedAt:   plan.GetDateTime("created").String(),
+			Id:             plan.Id,
+			Name:           plan.GetString("name"),
+			Description:    plan.GetString("description"),
+			Cost:           plan.GetFloat("cost"),
+			IndividualCost: plan.GetFloat("individual_cost"),
+			Owner:          ownerSlice[0],
+			JoinCode:       plan.GetString("join_code"),
+			CreatedAt:      plan.GetDateTime("created").String(),
 		}
 
 		// If user is a member or owner, get all members
@@ -363,10 +431,13 @@ func handlePlanDetails(app *pocketbase.PocketBase, templatesFS embed.FS) echo.Ha
 			// Add owner to members list
 			ownerRecord, err := app.Dao().FindRecordById(usersCollection.Id, familyPlan.Owner)
 			if err == nil && ownerRecord != nil {
+				// Owner should not have a balance displayed, so we don't calculate it
+
 				members = append(members, Member{
 					Id:       ownerRecord.Id,
 					Username: ownerRecord.GetString("username"),
 					Name:     ownerRecord.GetString("name"),
+					Balance:  0.0,
 				})
 				uniqueMembers[ownerRecord.Id] = true
 			}
@@ -387,12 +458,26 @@ func handlePlanDetails(app *pocketbase.PocketBase, templatesFS embed.FS) echo.Ha
 					continue
 				}
 
+				// Skip members who have left the plan
+				dateEnded := membership.GetDateTime("date_ended")
+				if !dateEnded.IsZero() {
+					continue
+				}
+
 				userRecord, err := app.Dao().FindRecordById(usersCollection.Id, userId)
 				if err == nil && userRecord != nil {
+					// Calculate member's balance
+					balance := 0.0
+					// Always calculate balance for all members regardless of who is viewing
+					balance, _ = calculateMemberBalance(app, plan.Id, userId)
+
 					members = append(members, Member{
-						Id:       userRecord.Id,
-						Username: userRecord.GetString("username"),
-						Name:     userRecord.GetString("name"),
+						Id:             userRecord.Id,
+						Username:       userRecord.GetString("username"),
+						Name:           userRecord.GetString("name"),
+						Balance:        balance,
+						LeaveRequested: membership.GetBool("leave_requested"),
+						DateEnded:      membership.GetDateTime("date_ended").String(),
 					})
 					uniqueMembers[userRecord.Id] = true
 				}
@@ -436,6 +521,170 @@ func handlePlanDetails(app *pocketbase.PocketBase, templatesFS embed.FS) echo.Ha
 			}
 		}
 
+		// Get payment data
+		pendingPayments := []Payment{}
+		userPayments := []Payment{}
+		allPayments := []Payment{}
+
+		if isMember {
+			paymentsCollection, err := app.Dao().FindCollectionByNameOrId("payments")
+			if err == nil {
+				// If owner, get all pending payments and all approved/rejected payments
+				if isOwner {
+					pendingPaymentRecords, err := app.Dao().FindRecordsByFilter(paymentsCollection.Id,
+						fmt.Sprintf("plan_id = '%s' && status = 'pending'", plan.Id), "-created", 100, 0)
+					if err == nil {
+						usersCollection, err := app.Dao().FindCollectionByNameOrId("users")
+						if err == nil {
+							// Get user details for each payment
+							for _, paymentRecord := range pendingPaymentRecords {
+								userId := paymentRecord.GetString("user_id")
+								userRecord, err := app.Dao().FindRecordById(usersCollection.Id, userId)
+								if err == nil && userRecord != nil {
+									// Add to pending payments
+									forMonth := ""
+									forMonthDate := paymentRecord.GetDateTime("for_month")
+									if !forMonthDate.IsZero() {
+										forMonth = forMonthDate.String()[:7] // Get YYYY-MM part
+									}
+
+									pendingPayments = append(pendingPayments, Payment{
+										Id:       paymentRecord.Id,
+										PlanId:   paymentRecord.GetString("plan_id"),
+										UserId:   userId,
+										Amount:   paymentRecord.GetFloat("amount"),
+										Date:     paymentRecord.GetDateTime("date").String()[:10], // Get YYYY-MM-DD part
+										Status:   paymentRecord.GetString("status"),
+										Notes:    paymentRecord.GetString("notes"),
+										ForMonth: forMonth,
+										Username: userRecord.GetString("username"),
+										Name:     userRecord.GetString("name"),
+									})
+								}
+							}
+						}
+					}
+
+					// Get all payments for all members (for owner view)
+					allPaymentRecords, err := app.Dao().FindRecordsByFilter(paymentsCollection.Id,
+						fmt.Sprintf("plan_id = '%s'", plan.Id), "-created", 100, 0)
+					if err == nil {
+						usersCollection, err := app.Dao().FindCollectionByNameOrId("users")
+						if err == nil {
+							for _, paymentRecord := range allPaymentRecords {
+								userId := paymentRecord.GetString("user_id")
+								userRecord, err := app.Dao().FindRecordById(usersCollection.Id, userId)
+								if err == nil && userRecord != nil {
+									forMonth := ""
+									forMonthDate := paymentRecord.GetDateTime("for_month")
+									if !forMonthDate.IsZero() {
+										forMonth = forMonthDate.String()[:7] // Get YYYY-MM part
+									}
+
+									allPayments = append(allPayments, Payment{
+										Id:       paymentRecord.Id,
+										PlanId:   paymentRecord.GetString("plan_id"),
+										UserId:   userId,
+										Amount:   paymentRecord.GetFloat("amount"),
+										Date:     paymentRecord.GetDateTime("date").String()[:10], // Get YYYY-MM-DD part
+										Status:   paymentRecord.GetString("status"),
+										Notes:    paymentRecord.GetString("notes"),
+										ForMonth: forMonth,
+										Username: userRecord.GetString("username"),
+										Name:     userRecord.GetString("name"),
+									})
+								}
+							}
+						}
+					}
+				}
+
+				// Get user's own payment history
+				userPaymentRecords, err := app.Dao().FindRecordsByFilter(paymentsCollection.Id,
+					fmt.Sprintf("plan_id = '%s' && user_id = '%s'", plan.Id, session.UserId), "-created", 20, 0)
+				if err == nil {
+					for _, paymentRecord := range userPaymentRecords {
+						forMonth := ""
+						forMonthDate := paymentRecord.GetDateTime("for_month")
+						if !forMonthDate.IsZero() {
+							forMonth = forMonthDate.String()[:7] // Get YYYY-MM part
+						}
+
+						userPayments = append(userPayments, Payment{
+							Id:       paymentRecord.Id,
+							PlanId:   paymentRecord.GetString("plan_id"),
+							UserId:   paymentRecord.GetString("user_id"),
+							Amount:   paymentRecord.GetFloat("amount"),
+							Date:     paymentRecord.GetDateTime("date").String()[:10], // Get YYYY-MM-DD part
+							Status:   paymentRecord.GetString("status"),
+							Notes:    paymentRecord.GetString("notes"),
+							ForMonth: forMonth,
+						})
+					}
+				}
+			}
+		}
+
+		// Calculate total payments made for this plan
+		totalPayments := 0.0
+		paymentsCollection, err := app.Dao().FindCollectionByNameOrId("payments")
+		if err != nil {
+			return fmt.Errorf("error getting payments collection: %w", err)
+		}
+
+		approvedPayments, err := app.Dao().FindRecordsByFilter(paymentsCollection.Id,
+			fmt.Sprintf("plan_id = '%s' && status = 'approved'", plan.Id), "", -1, 0)
+		if err != nil {
+			return fmt.Errorf("error getting approved payments: %w", err)
+		}
+
+		for _, payment := range approvedPayments {
+			amount := payment.GetFloat("amount")
+			totalPayments += amount
+		}
+
+		// Calculate total savings (individual cost * members - family plan cost)
+		totalSavings := 0.0
+		individualCost := plan.GetFloat("individual_cost")
+		familyPlanCost := plan.GetFloat("cost")
+
+		// Get all months the plan has been active
+		planCreated := plan.GetDateTime("created")
+		planCreationTime := planCreated.Time()
+		currentTime := time.Now()
+
+		// Start from the first day of the month the plan was created
+		startDate := time.Date(planCreationTime.Year(), planCreationTime.Month(), 1, 0, 0, 0, 0, planCreationTime.Location())
+
+		// Go month by month until current month
+		for currentDate := startDate; currentDate.Before(currentTime); currentDate = currentDate.AddDate(0, 1, 0) {
+			// Get active memberships for this month
+			activeMemberships, err := getActiveMembershipsForMonth(app, plan.Id, currentDate)
+			if err != nil {
+				// Log error but don't stop processing
+				fmt.Printf("Error getting active memberships for %s: %v\n", currentDate.Format("2006-01"), err)
+				continue
+			}
+
+			// Calculate savings for this month
+			memberCount := len(activeMemberships)
+			if memberCount > 0 {
+				monthlySavings := (individualCost * float64(memberCount)) - familyPlanCost
+				if monthlySavings > 0 {
+					totalSavings += monthlySavings
+				}
+			}
+		}
+
+		// Calculate plan age in days
+		planAgeDays := int(time.Since(planCreationTime).Hours() / 24)
+
+		// Get user's current balance
+		userBalance := 0.0
+		if isMember && !isOwner {
+			userBalance, _ = calculateMemberBalance(app, plan.Id, session.UserId)
+		}
+
 		// Parse and render the template
 		funcMap := template.FuncMap{
 			"upper": strings.ToUpper,
@@ -448,22 +697,47 @@ func handlePlanDetails(app *pocketbase.PocketBase, templatesFS embed.FS) echo.Ha
 				}
 				return s[i:j]
 			},
+			"formatMoney": func(amount float64) string {
+				return fmt.Sprintf("$%.2f", amount)
+			},
+			"div": func(a, b float64) float64 {
+				if b == 0 {
+					return 0
+				}
+				return a / b
+			},
+			"mul": func(a, b float64) float64 {
+				return a * b
+			},
+			"sub": func(a, b float64) float64 {
+				return a - b
+			},
+			"float64": func(i int) float64 {
+				return float64(i)
+			},
 		}
 
 		// Create a data map for the template
 		data := map[string]interface{}{
-			"title":           familyPlan.Name,
-			"isAuthenticated": session.IsAuthenticated,
-			"username":        session.Username,
-			"name":            session.Name,
-			"userId":          session.UserId,
-			"plan":            familyPlan,
-			"is_owner":        isOwner,
-			"is_member":       isMember,
-			"members":         members,
-			"total_members":   totalMembers,
-			"join_requests":   joinRequests,
-			"pending_request": pendingRequest,
+			"title":              familyPlan.Name,
+			"isAuthenticated":    session.IsAuthenticated,
+			"username":           session.Username,
+			"name":               session.Name,
+			"userId":             session.UserId,
+			"plan":               familyPlan,
+			"is_owner":           isOwner,
+			"is_member":          isMember,
+			"members":            members,
+			"total_members":      totalMembers,
+			"join_requests":      joinRequests,
+			"pending_request":    pendingRequest,
+			"pending_payments":   pendingPayments,
+			"user_payments":      userPayments,
+			"user_balance":       userBalance,
+			"existingMembership": existingMembership,
+			"all_payments":       allPayments,
+			"total_savings":      totalSavings,
+			"plan_age_days":      planAgeDays,
 		}
 
 		tmpl, err := template.New("layout").Funcs(funcMap).ParseFS(templatesFS, "templates/layout.html", "templates/plan_details.html")
