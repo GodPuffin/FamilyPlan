@@ -55,7 +55,8 @@ jobs:
           ssh ${{ env.SSH_USER }}@${{ env.SSH_HOST }} "apt update && apt install -y nginx certbot python3-certbot-nginx ufw net-tools"
           
           # Create systemd service
-          ssh ${{ env.SSH_USER }}@${{ env.SSH_HOST }} "cat > /etc/systemd/system/familyplanmanager.service << 'EOF'
+          ssh ${{ env.SSH_USER }}@${{ env.SSH_HOST }} "cat > /etc/systemd/system/familyplanmanager.service <<-'EOF'
+
           [Unit]
           Description=Family Plan Manager
           After=network.target
@@ -79,7 +80,7 @@ jobs:
             if [ ! -f /etc/nginx/sites-available/familyplanmanager ]; then
                 cat > /etc/nginx/sites-available/familyplanmanager << 'EOF'
                 server {
-                    server_name ${{ env.DOMAIN }} www.${{ env.DOMAIN }};
+                    server_name familyplanmanager.xyz www.familyplanmanager.xyz;
                     
                     # Debug logs
                     access_log /var/log/nginx/familyplanmanager_access.log;
