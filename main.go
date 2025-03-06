@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/core"
@@ -34,8 +35,24 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Add custom routes
+	// Configure app settings for Cloudflare
+	app.Settings().Meta.AppUrl = "http://0.0.0.0:8090" // Local binding
+	app.Settings().Meta.HideControls = true
+	app.Settings().Logs.MaxDays = 7
+	app.Settings().Smtp.Enabled = false
+
+	// Trust X-Forwarded-* headers from Cloudflare
 	app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
+		e.Router.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+			return func(c echo.Context) error {
+				// Trust Cloudflare headers
+				if cfProto := c.Request().Header.Get("CF-Visitor"); cfProto != "" {
+					c.Request().Header.Set("X-Forwarded-Proto", "https")
+				}
+				return next(c)
+			}
+		})
+
 		// Register templates with functions
 		tmpl := template.New("").Funcs(templateFuncs)
 		templates := template.Must(tmpl.ParseFS(templatesFS, "templates/*.html"))

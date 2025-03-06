@@ -154,7 +154,7 @@ func handleLoginSubmit(app *pocketbase.PocketBase) echo.HandlerFunc {
 			Expires:  time.Now().Add(30 * 24 * time.Hour), // 30 days
 			HttpOnly: true,
 			SameSite: http.SameSiteLaxMode,
-			Secure:   c.Scheme() == "https",
+			Secure:   true, // Always set secure with Cloudflare
 		}
 		c.SetCookie(cookie)
 
@@ -256,6 +256,7 @@ func handleRegisterSubmit(app *pocketbase.PocketBase) echo.HandlerFunc {
 			Expires:  time.Now().Add(30 * 24 * time.Hour), // 30 days
 			HttpOnly: true,
 			SameSite: http.SameSiteLaxMode,
+			Secure:   true, // Always set secure with Cloudflare
 		}
 		c.SetCookie(cookie)
 
@@ -274,6 +275,8 @@ func handleLogout() echo.HandlerFunc {
 			Path:     "/",
 			Expires:  time.Now().Add(-1 * time.Hour), // In the past
 			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
+			Secure:   true, // Always set secure with Cloudflare
 		}
 		c.SetCookie(cookie)
 
