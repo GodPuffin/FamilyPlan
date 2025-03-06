@@ -52,7 +52,7 @@ jobs:
           rsync -avz --exclude 'pb_data' --exclude '.git' ./ ${{ env.SSH_USER }}@${{ env.SSH_HOST }}:/var/www/familyplanmanager/
           
           # Install dependencies on the server
-          ssh ${{ env.SSH_USER }}@${{ env.SSH_HOST }} "apt update && apt install -y nginx certbot python3-certbot-nginx ufw"
+          ssh ${{ env.SSH_USER }}@${{ env.SSH_HOST }} "apt update && apt install -y nginx certbot python3-certbot-nginx ufw net-tools"
           
           # Create systemd service
           ssh ${{ env.SSH_USER }}@${{ env.SSH_HOST }} "cat > /etc/systemd/system/familyplanmanager.service << 'EOF'
@@ -77,21 +77,29 @@ jobs:
           # Configure Nginx
           ssh ${{ env.SSH_USER }}@${{ env.SSH_HOST }} "cat > /etc/nginx/sites-available/familyplanmanager << 'EOF'
           server {
-              listen 80;
               server_name ${{ env.DOMAIN }} www.${{ env.DOMAIN }};
               
+              # Debug logs
+              access_log /var/log/nginx/familyplanmanager_access.log;
+              error_log /var/log/nginx/familyplanmanager_error.log debug;
+              
               location / {
-                  proxy_pass http://localhost:8090;
+                  proxy_pass http://[::1]:8090;
                   proxy_set_header Host \$host;
                   proxy_set_header X-Real-IP \$remote_addr;
                   proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
                   proxy_set_header X-Forwarded-Proto \$scheme;
+                  proxy_read_timeout 90;
               }
           }
           EOF"
           
           # Enable site and configure SSL
           ssh ${{ env.SSH_USER }}@${{ env.SSH_HOST }} "
+            # Remove default site to avoid conflicts
+            rm -f /etc/nginx/sites-enabled/default
+            
+            # Link our site config
             ln -sf /etc/nginx/sites-available/familyplanmanager /etc/nginx/sites-enabled/
             nginx -t
             systemctl restart nginx
@@ -105,6 +113,8 @@ jobs:
             ufw allow ssh
             ufw allow http
             ufw allow https
+            ufw allow from 127.0.0.1 to any port 8090
+            ufw allow from ::1 to any port 8090
             ufw --force enable
             
             # Reload and restart services
