@@ -11,6 +11,8 @@ import (
 	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/plugins/migratecmd"
+
+	_ "familyplan/migrations" // Import migrations package
 )
 
 //go:embed templates/*
