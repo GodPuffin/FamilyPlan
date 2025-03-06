@@ -35,17 +35,18 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Configure app settings for Cloudflare
-	app.Settings().Meta.AppUrl = "http://0.0.0.0:8090" // Local binding
+	// Configure app settings
+	app.Settings().Meta.AppUrl = "https://familyplanmanager.xyz"
 	app.Settings().Meta.HideControls = true
 	app.Settings().Logs.MaxDays = 7
 	app.Settings().Smtp.Enabled = false
 
-	// Trust X-Forwarded-* headers from Cloudflare
+	// Add custom routes
 	app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
+		// Trust Cloudflare headers
 		e.Router.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 			return func(c echo.Context) error {
-				// Trust Cloudflare headers
+				// Check if request is from Cloudflare
 				if cfProto := c.Request().Header.Get("CF-Visitor"); cfProto != "" {
 					c.Request().Header.Set("X-Forwarded-Proto", "https")
 				}
@@ -69,11 +70,11 @@ func main() {
 		return nil
 	})
 
-	// Set default command to serve with explicit host binding
+	// Set default command to serve on HTTP (Cloudflare will handle HTTPS)
 	os.Args = append([]string{os.Args[0], "serve", "--http=0.0.0.0:8090"}, os.Args[1:]...)
 
 	// Add DEBUG info to help with troubleshooting
-	fmt.Println("Server starting, will be accessible at http://0.0.0.0:8090")
+	fmt.Println("Server starting, will be accessible via Cloudflare at https://familyplanmanager.xyz")
 	fmt.Println("Command arguments:", os.Args)
 
 	// Start the server
