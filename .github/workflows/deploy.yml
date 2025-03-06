@@ -44,7 +44,11 @@ jobs:
         scp -r static root@$DROPLET_IP:$DEPLOY_PATH/
         scp -r templates root@$DROPLET_IP:$DEPLOY_PATH/
         
-        # Set up systemd service for running the application
+        # Transfer and run the setup script
+        scp setup_server.sh root@$DROPLET_IP:$DEPLOY_PATH/
+        ssh root@$DROPLET_IP "chmod +x $DEPLOY_PATH/setup_server.sh && $DEPLOY_PATH/setup_server.sh"
+        
+        # Create or update the systemd service with explicit binding
         echo "[Unit]
         Description=Family Plan Application Service
         After=network.target
@@ -53,7 +57,7 @@ jobs:
         Type=simple
         User=root
         WorkingDirectory=$DEPLOY_PATH
-        ExecStart=$DEPLOY_PATH/familyplan
+        ExecStart=$DEPLOY_PATH/familyplan serve --http=0.0.0.0:8090
         Restart=on-failure
         RestartSec=5
         Environment=\"PORT=8090\"
@@ -63,9 +67,17 @@ jobs:
 
         # Enable and restart the service
         ssh root@$DROPLET_IP "systemctl daemon-reload && systemctl enable familyplan && systemctl restart familyplan"
+        
+        # Verify the service is running and listening
+        ssh root@$DROPLET_IP "systemctl status familyplan --no-pager && ss -tulpn | grep 8090"
+        
+        # Configure firewall if needed
+        ssh root@$DROPLET_IP "ufw allow 8090/tcp || true && ufw status || true"
 
     - name: Verify deployment
       env:
         DROPLET_IP: ${{ secrets.DROPLET_IP }}
       run: |
         echo "Deployment completed. Application should be running at http://$DROPLET_IP:8090"
+        # Try to connect to the application (may fail if GitHub runner is blocked)
+        curl -v --connect-timeout 5 http://$DROPLET_IP:8090 || echo "Could not connect from GitHub runner, but service should be running"
