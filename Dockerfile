@@ -26,8 +26,11 @@ COPY --from=builder /app/familyplan .
 COPY --from=builder /app/templates ./templates
 COPY --from=builder /app/static ./static
 
+# Set environment variables to prevent HTTPS redirects
+ENV DISABLE_HTTPS=true
+
 # Expose the port
 EXPOSE 8090
 
-# Run the application with explicit binding to all interfaces
+# Run the application with explicit binding to all interfaces and HTTPS disabled
 CMD ["./familyplan", "serve", "--http=0.0.0.0:8090"] 
