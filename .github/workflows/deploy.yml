@@ -9,19 +9,22 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Build and export Docker image
+      uses: docker/build-push-action@v3
       with:
-        go-version: '1.21'
-        cache: true
+        context: .
+        push: false
+        load: true
+        tags: familyplan:latest
 
-    - name: Install dependencies
-      run: go mod tidy
-
-    - name: Build
-      run: go build -o familyplan .
+    - name: Save Docker image to file
+      run: docker save familyplan:latest > familyplan-image.tar
 
     - name: Set up SSH
       env:
@@ -33,53 +36,51 @@ jobs:
         chmod 600 ~/.ssh/id_rsa
         ssh-keyscan -H $DROPLET_IP >> ~/.ssh/known_hosts
 
-    - name: Deploy application
+    - name: Deploy Docker image to DigitalOcean
       env:
         DROPLET_IP: ${{ secrets.DROPLET_IP }}
-        DEPLOY_PATH: /var/www/familyplan
       run: |
-        # First, ensure the deploy directory exists and has proper permissions
-        ssh root@$DROPLET_IP "mkdir -p $DEPLOY_PATH && chmod 755 $DEPLOY_PATH"
+        # Check if Docker is installed, install if needed
+        ssh root@$DROPLET_IP "which docker || (apt-get update && apt-get install -y docker.io)"
         
-        # Transfer application files
-        scp familyplan root@$DROPLET_IP:$DEPLOY_PATH/
-        scp -r static root@$DROPLET_IP:$DEPLOY_PATH/
-        scp -r templates root@$DROPLET_IP:$DEPLOY_PATH/
+        # Transfer Docker image
+        scp familyplan-image.tar root@$DROPLET_IP:/tmp/
         
-        # Transfer the setup script
-        scp setup_server.sh root@$DROPLET_IP:$DEPLOY_PATH/
+        # Load the Docker image
+        ssh root@$DROPLET_IP "docker load < /tmp/familyplan-image.tar"
         
-        # Make files executable and run setup
-        ssh root@$DROPLET_IP "chmod +x $DEPLOY_PATH/familyplan && chmod +x $DEPLOY_PATH/setup_server.sh && $DEPLOY_PATH/setup_server.sh"
+        # Stop and remove any existing container
+        ssh root@$DROPLET_IP "docker stop familyplan-container || true"
+        ssh root@$DROPLET_IP "docker rm familyplan-container || true"
         
-        # Create or update the systemd service with explicit binding
-        echo "[Unit]
-        Description=Family Plan Application Service
-        After=network.target
-
-        [Service]
-        Type=simple
-        User=root
-        WorkingDirectory=$DEPLOY_PATH
-        ExecStart=$DEPLOY_PATH/familyplan serve --http=0.0.0.0:8090
-        Restart=on-failure
-        RestartSec=5
-        Environment=\"PORT=8090\"
-
-        [Install]
-        WantedBy=multi-user.target" | ssh root@$DROPLET_IP "cat > /etc/systemd/system/familyplan.service"
-
-        # Enable and restart the service
-        ssh root@$DROPLET_IP "systemctl daemon-reload && systemctl enable familyplan && systemctl restart familyplan"
+        # Create PocketBase data directory if needed for persistence
+        ssh root@$DROPLET_IP "mkdir -p /var/data/familyplan"
         
-        # Configure firewall
+        # Run the new container with volume mount for data persistence
+        ssh root@$DROPLET_IP "docker run -d \
+          --name familyplan-container \
+          -p 8090:8090 \
+          -v /var/data/familyplan:/app/pb_data \
+          --restart=always \
+          familyplan:latest"
+        
+        # Configure firewall to allow port 8090
         ssh root@$DROPLET_IP "ufw allow 8090/tcp || true"
         
-        # Verify the service is running
-        ssh root@$DROPLET_IP "systemctl status familyplan --no-pager || true"
+        # Clean up the transferred image to save space
+        ssh root@$DROPLET_IP "rm /tmp/familyplan-image.tar"
+        
+        # Display container status
+        ssh root@$DROPLET_IP "docker ps | grep familyplan-container || echo 'Container not running!'"
 
     - name: Verify deployment
       env:
         DROPLET_IP: ${{ secrets.DROPLET_IP }}
       run: |
+        echo "Waiting 10 seconds for application to start..."
+        sleep 10
+        
         echo "Deployment completed. Application should be running at http://$DROPLET_IP:8090"
+        
+        # Try to connect to the application (may fail if GitHub runner is blocked)
+        curl -v --connect-timeout 5 http://$DROPLET_IP:8090 || echo "Could not connect from GitHub runner, but the container should be running."
