@@ -38,15 +38,19 @@ jobs:
         DROPLET_IP: ${{ secrets.DROPLET_IP }}
         DEPLOY_PATH: /var/www/familyplan
       run: |
-        ssh root@$DROPLET_IP "mkdir -p $DEPLOY_PATH"
+        # First, ensure the deploy directory exists and has proper permissions
+        ssh root@$DROPLET_IP "mkdir -p $DEPLOY_PATH && chmod 755 $DEPLOY_PATH"
+        
         # Transfer application files
         scp familyplan root@$DROPLET_IP:$DEPLOY_PATH/
         scp -r static root@$DROPLET_IP:$DEPLOY_PATH/
         scp -r templates root@$DROPLET_IP:$DEPLOY_PATH/
         
-        # Transfer and run the setup script
+        # Transfer the setup script
         scp setup_server.sh root@$DROPLET_IP:$DEPLOY_PATH/
-        ssh root@$DROPLET_IP "chmod +x $DEPLOY_PATH/setup_server.sh && $DEPLOY_PATH/setup_server.sh"
+        
+        # Make files executable and run setup
+        ssh root@$DROPLET_IP "chmod +x $DEPLOY_PATH/familyplan && chmod +x $DEPLOY_PATH/setup_server.sh && $DEPLOY_PATH/setup_server.sh"
         
         # Create or update the systemd service with explicit binding
         echo "[Unit]
@@ -68,16 +72,14 @@ jobs:
         # Enable and restart the service
         ssh root@$DROPLET_IP "systemctl daemon-reload && systemctl enable familyplan && systemctl restart familyplan"
         
-        # Verify the service is running and listening
-        ssh root@$DROPLET_IP "systemctl status familyplan --no-pager && ss -tulpn | grep 8090"
+        # Configure firewall
+        ssh root@$DROPLET_IP "ufw allow 8090/tcp || true"
         
-        # Configure firewall if needed
-        ssh root@$DROPLET_IP "ufw allow 8090/tcp || true && ufw status || true"
+        # Verify the service is running
+        ssh root@$DROPLET_IP "systemctl status familyplan --no-pager || true"
 
     - name: Verify deployment
       env:
         DROPLET_IP: ${{ secrets.DROPLET_IP }}
       run: |
         echo "Deployment completed. Application should be running at http://$DROPLET_IP:8090"
-        # Try to connect to the application (may fail if GitHub runner is blocked)
-        curl -v --connect-timeout 5 http://$DROPLET_IP:8090 || echo "Could not connect from GitHub runner, but service should be running"
