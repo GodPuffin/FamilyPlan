@@ -52,11 +52,11 @@ func main() {
 		return nil
 	})
 
-	// Set default command to serve
+	// Set default command to serve with explicit host binding
 	os.Args = append([]string{os.Args[0], "serve", "--http=0.0.0.0:8090"}, os.Args[1:]...)
 
-	// Start the server
-	fmt.Println("Server starting, will be available on http://0.0.0.0:8090")
+	// Start the server - modified for external access
+	fmt.Println("Server starting, will be available externally on http://0.0.0.0:8090")
 	if err := app.Start(); err != nil {
 		log.Fatal(err)
 	}
