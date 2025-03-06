@@ -1,17 +1,15 @@
-name: Deploy to DigitalOcean
+name: Deploy Application Only
 
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:  # Allow manual triggering
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     
     env:
-      DO_API_TOKEN: ${{ secrets.DO_API_TOKEN }}
-      DOMAIN: familyplanmanager.xyz
       SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
       SSH_HOST: ${{ secrets.SSH_HOST }}
       SSH_USER: root
@@ -24,12 +22,6 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version: '1.21'
-          check-latest: true
-
-      - name: Install doctl
-        uses: digitalocean/action-doctl@v2
-        with:
-          token: ${{ secrets.DO_API_TOKEN }}
 
       - name: Build application
         run: |
@@ -42,209 +34,13 @@ jobs:
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
-
-      - name: Create app directory
-        run: ssh ${{ env.SSH_USER }}@${{ env.SSH_HOST }} "mkdir -p /var/www/familyplanmanager"
           
       - name: Transfer application files
         run: rsync -avz --exclude 'pb_data' --exclude '.git' ./ ${{ env.SSH_USER }}@${{ env.SSH_HOST }}:/var/www/familyplanmanager/
           
-      - name: Install dependencies
-        run: ssh ${{ env.SSH_USER }}@${{ env.SSH_HOST }} "apt update && apt install -y nginx certbot python3-certbot-nginx ufw net-tools"
+      - name: Restart service
+        run: ssh ${{ env.SSH_USER }}@${{ env.SSH_HOST }} "systemctl restart familyplanmanager"
           
-      - name: Create systemd service
+      - name: Verify application is running
         run: |
-          ssh ${{ env.SSH_USER }}@${{ env.SSH_HOST }} "cat > /etc/systemd/system/familyplanmanager.service << 'EOFSERVICE'
-          [Unit]
-          Description=Family Plan Manager
-          After=network.target
-
-          [Service]
-          Type=simple
-          User=root
-          WorkingDirectory=/var/www/familyplanmanager
-          ExecStart=/var/www/familyplanmanager/app
-          Restart=on-failure
-          RestartSec=5s
-          StandardOutput=journal
-          StandardError=journal
-
-          [Install]
-          WantedBy=multi-user.target
-          EOFSERVICE"
-          
-      - name: Configure Nginx with Cloudflare support
-        run: |
-          ssh ${{ env.SSH_USER }}@${{ env.SSH_HOST }} "
-          # Create Cloudflare IP list file
-          cat > /etc/nginx/cloudflare-ips.conf << 'EOFCLOUDFLARE'
-          # Cloudflare IPv4 ranges
-          set_real_ip_from 173.245.48.0/20;
-          set_real_ip_from 103.21.244.0/22;
-          set_real_ip_from 103.22.200.0/22;
-          set_real_ip_from 103.31.4.0/22;
-          set_real_ip_from 141.101.64.0/18;
-          set_real_ip_from 108.162.192.0/18;
-          set_real_ip_from 190.93.240.0/20;
-          set_real_ip_from 188.114.96.0/20;
-          set_real_ip_from 197.234.240.0/22;
-          set_real_ip_from 198.41.128.0/17;
-          set_real_ip_from 162.158.0.0/15;
-          set_real_ip_from 104.16.0.0/13;
-          set_real_ip_from 104.24.0.0/14;
-          set_real_ip_from 172.64.0.0/13;
-          set_real_ip_from 131.0.72.0/22;
-
-          # Cloudflare IPv6 ranges
-          set_real_ip_from 2400:cb00::/32;
-          set_real_ip_from 2606:4700::/32;
-          set_real_ip_from 2803:f800::/32;
-          set_real_ip_from 2405:b500::/32;
-          set_real_ip_from 2405:8100::/32;
-          set_real_ip_from 2a06:98c0::/29;
-          set_real_ip_from 2c0f:f248::/32;
-
-          real_ip_header CF-Connecting-IP;
-          EOFCLOUDFLARE
-
-          # Create a complete nginx config file (don't use problematic sed)
-          cat > /etc/nginx/sites-available/familyplanmanager << 'EOFNGINX'
-          server {
-              server_name familyplanmanager.xyz www.familyplanmanager.xyz;
-              
-              # Include Cloudflare IP ranges
-              include /etc/nginx/cloudflare-ips.conf;
-              
-              # Debug logs
-              access_log /var/log/nginx/familyplanmanager_access.log;
-              error_log /var/log/nginx/familyplanmanager_error.log debug;
-              
-              location / {
-                  proxy_pass http://127.0.0.1:8090;
-                  proxy_set_header Host \$host;
-                  proxy_set_header X-Real-IP \$remote_addr;
-                  proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-                  proxy_set_header X-Forwarded-Proto \$scheme;
-                  proxy_read_timeout 90;
-              }
-          }
-          EOFNGINX"
-          
-      - name: Configure site and SSL
-        run: |
-          ssh ${{ env.SSH_USER }}@${{ env.SSH_HOST }} "
-          # Remove default site to avoid conflicts
-          rm -f /etc/nginx/sites-enabled/default
-
-          # Link our site config
-          ln -sf /etc/nginx/sites-available/familyplanmanager /etc/nginx/sites-enabled/
-          nginx -t && systemctl restart nginx
-
-          # Configure Certbot for SSL (even if certificates exist)
-          certbot --nginx -d ${{ env.DOMAIN }} -d www.${{ env.DOMAIN }} --non-interactive --agree-tos --email ${{ secrets.ADMIN_EMAIL }} || true
-
-          # Configure firewall for Cloudflare
-          # First, get the current Cloudflare IPs
-          CF_IPV4_URL='https://www.cloudflare.com/ips-v4'
-          CF_IPV6_URL='https://www.cloudflare.com/ips-v6'
-          CF_IPV4=\$(curl -s \$CF_IPV4_URL)
-          
-          # Reset and configure firewall
-          ufw --force reset
-          ufw default deny incoming
-          ufw default allow outgoing
-          ufw allow ssh
-          
-          # Allow Cloudflare IPs to access port 80 and 443
-          for ip in \$CF_IPV4; do
-            ufw allow from \$ip to any port 80 proto tcp
-            ufw allow from \$ip to any port 443 proto tcp
-          done
-          
-          # Allow access to the app from anywhere (not just localhost)
-          ufw allow 8090/tcp
-          
-          # Enable the firewall
-          ufw --force enable
-          
-          # Make executable and ensure permissions
-          chmod +x /var/www/familyplanmanager/app
-          
-          # Reload and restart services
-          systemctl daemon-reload
-          systemctl enable familyplanmanager
-          systemctl restart familyplanmanager
-          
-          # Verify application is running
-          sleep 5
-          systemctl status familyplanmanager
-          netstat -tlnp | grep 8090"
-
-      # Add a step to configure DigitalOcean Cloud Firewall
-      - name: Configure DigitalOcean Cloud Firewall
-        run: |
-          # Get Droplet ID
-          DROPLET_ID=$(doctl compute droplet list --format ID,Name --no-header | grep ${{ env.SSH_HOST }} | awk '{print $1}')
-          
-          # Check if there's an existing firewall for this droplet
-          EXISTING_FIREWALL=$(doctl compute firewall list --format ID,Name,DropletIDs --no-header | grep $DROPLET_ID || echo "")
-          
-          if [ -z "$EXISTING_FIREWALL" ]; then
-            # Create a new firewall if one doesn't exist
-            echo "Creating new firewall for droplet $DROPLET_ID"
-            doctl compute firewall create \
-              --name "firewall-${{ env.DOMAIN }}" \
-              --inbound-rules "protocol:tcp,ports:22,address:0.0.0.0/0 protocol:tcp,ports:80,address:0.0.0.0/0 protocol:tcp,ports:443,address:0.0.0.0/0 protocol:tcp,ports:8090,address:0.0.0.0/0" \
-              --outbound-rules "protocol:tcp,ports:all,address:0.0.0.0/0 protocol:udp,ports:all,address:0.0.0.0/0 protocol:icmp,address:0.0.0.0/0" \
-              --droplet-ids $DROPLET_ID
-          else
-            # Get the firewall ID
-            FIREWALL_ID=$(echo $EXISTING_FIREWALL | awk '{print $1}')
-            echo "Updating existing firewall $FIREWALL_ID for droplet $DROPLET_ID"
-            
-            # Add a rule for port 8090 to the existing firewall
-            doctl compute firewall add-rules $FIREWALL_ID \
-              --inbound-rules "protocol:tcp,ports:8090,address:0.0.0.0/0"
-          fi
-
-      - name: Verify Deployment
-        run: |
-          # Wait for deployment to stabilize
-          sleep 10
-          
-          # Check application status
-          ssh ${{ env.SSH_USER }}@${{ env.SSH_HOST }} "systemctl status familyplanmanager || true"
-          
-          # Check if port is listening
-          ssh ${{ env.SSH_USER }}@${{ env.SSH_HOST }} "netstat -tlnp | grep 8090 || true"
-          
-          # Check nginx config
-          ssh ${{ env.SSH_USER }}@${{ env.SSH_HOST }} "nginx -t || true"
-          
-          # Test HTTP/HTTPS connectivity
-          curl -I http://${{ env.DOMAIN }} || echo "HTTP test failed but continuing"
-          curl -I https://${{ env.DOMAIN }} || echo "HTTPS test failed but continuing"
-          
-          # Also test direct access
-          echo "Testing direct access to application on port 8090"
-          curl -I http://${{ env.SSH_HOST }}:8090 || echo "Direct access test failed but continuing"
-
-      - name: Setup Backup System
-        run: |
-          ssh ${{ env.SSH_USER }}@${{ env.SSH_HOST }} "
-          # Create backup directory
-          mkdir -p /root/backups
-
-          # Create backup script
-          cat > /root/backup_pb_data.sh << 'EOFBACKUP'
-          #!/bin/bash
-          TIMESTAMP=\$(date +%Y%m%d_%H%M%S)
-          tar -czf /root/backups/pb_data_\$TIMESTAMP.tar.gz /var/www/familyplanmanager/pb_data
-          # Keep only the last 7 backups
-          ls -tp /root/backups/pb_data_* | grep -v '/$' | tail -n +8 | xargs -I {} rm -- {}
-          EOFBACKUP
-
-          chmod +x /root/backup_pb_data.sh
-
-          # Setup daily backup cron job
-          (crontab -l 2>/dev/null || echo '') | grep -v 'backup_pb_data.sh' | { cat; echo '0 2 * * * /root/backup_pb_data.sh'; } | crontab -"
+          ssh ${{ env.SSH_USER }}@${{ env.SSH_HOST }} "systemctl status familyplanmanager"
