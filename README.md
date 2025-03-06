@@ -95,9 +95,15 @@ When you first run the application, you'll need to set up the PocketBase databas
 
 ## Deployment
 
-### Docker
+### DigitalOcean App Platform
 
-A Dockerfile is planned for future releases to simplify deployment.
+This application is designed to be deployed on DigitalOcean App Platform:
+
+1. Create a new app in DigitalOcean App Platform
+2. Connect to your GitHub repository
+3. DigitalOcean will automatically detect the Go application
+4. Configure your domain in the settings
+5. App Platform will handle HTTPS and deployment automatically
 
 ### Manual Deployment
 

@@ -1,4 +1,4 @@
-.PHONY: run build clean test lint dev docker-build docker-run
+.PHONY: run build clean test lint dev
 
 # Default target
 all: run
@@ -42,14 +42,6 @@ lint:
 		echo "golangci-lint not installed, skipping"; \
 	fi
 
-# Build Docker image
-docker-build:
-	docker build -t family-plan-app .
-
-# Run Docker container
-docker-run:
-	docker run -p 8090:8090 family-plan-app
-
 # Help
 help:
 	@echo "Available targets:"
@@ -61,6 +53,4 @@ help:
 	@echo "  test          - Run tests"
 	@echo "  test-coverage - Run tests with coverage"
 	@echo "  lint          - Lint the code"
-	@echo "  docker-build  - Build Docker image"
-	@echo "  docker-run    - Run Docker container"
 	@echo "  help          - Show this help message" 
