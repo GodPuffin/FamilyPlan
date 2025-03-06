@@ -58,10 +58,10 @@ func main() {
 	})
 
 	// Set default command to serve
-	os.Args = append([]string{os.Args[0], "serve", "--http=0.0.0.0:8080"}, os.Args[1:]...)
+	os.Args = append([]string{os.Args[0], "serve", "--http=0.0.0.0:8090"}, os.Args[1:]...)
 
 	// Add DEBUG info to help with troubleshooting
-	fmt.Println("Server starting, will be accessible at http://0.0.0.0:8080")
+	fmt.Println("Server starting, will be accessible at http://0.0.0.0:8090")
 	fmt.Println("Command arguments:", os.Args)
 
 	// Start the server
