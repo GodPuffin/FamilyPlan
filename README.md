@@ -71,12 +71,7 @@ When you first run the application, you'll need to set up the PocketBase databas
 
 1. Navigate to http://localhost:8090/_/
 2. Create an admin account
-3. Create the following collections:
-   - `users` - For user authentication
-   - `family_plans` - For storing plan details (name, description, cost, owner, join code)
-   - `plan_members` - For tracking membership
-   - `join_requests` - For managing pending join requests
-
+   
 ## Project Structure
 
 - `main.go` - Main application entry point
