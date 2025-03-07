@@ -187,7 +187,7 @@
                     <h3 class="text-lg font-semibold mb-4">Your Payments</h3>
                     <button type="button" id="claimPaymentBtn" 
                         class="bg-blue-500 hover:bg-blue-700 text-white text-sm py-1 px-3 rounded focus:outline-none"
-                        onclick="console.log('Claim button clicked via inline handler'); var modal = document.getElementById('claimPaymentModal'); if(modal) { modal.classList.remove('hidden'); console.log('Modal shown'); } else { console.error('Modal not found!'); }">
+                        onclick="var modal = document.getElementById('claimPaymentModal'); if(modal) { modal.classList.remove('hidden'); } else { console.error('Modal not found!'); }">
                         Claim Payment
                     </button>
                 </div>
@@ -580,18 +580,14 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        console.log("Script loaded");
-        
         // Copy invitation code to clipboard
         const copyBtn = document.getElementById('copyCodeBtn');
         if (copyBtn) {
-            console.log("Copy button found");
             copyBtn.addEventListener('click', function() {
                 const code = this.getAttribute('data-code');
                 const feedbackEl = document.getElementById('copyFeedback');
                 
                 navigator.clipboard.writeText(code).then(function() {
-                    console.log("Code copied to clipboard");
                     // Show feedback
                     feedbackEl.classList.remove('opacity-0');
                     feedbackEl.classList.add('opacity-100');
@@ -607,7 +603,6 @@
                         }, 300);
                     }, 2000);
                 }).catch(function() {
-                    console.error("Failed to copy code");
                     if (feedbackEl) {
                         feedbackEl.textContent = 'Failed to copy';
                         feedbackEl.classList.remove('opacity-0');
@@ -626,9 +621,7 @@
         const optionsModal = document.getElementById('optionsModal');
         const openOptionsBtn = document.getElementById('openOptionsBtn');
         if (openOptionsBtn && optionsModal) {
-            console.log("Options modal found");
             openOptionsBtn.addEventListener('click', function() {
-                console.log("Opening options modal");
                 optionsModal.classList.remove('hidden');
             });
 
@@ -648,19 +641,14 @@
         }
         
         // Claim Payment Modal - Simplified direct access approach
-        console.log("Setting up claim payment handling");
         
         // Check if modal exists
         const claimPaymentModal = document.getElementById('claimPaymentModal');
         if (claimPaymentModal) {
-            console.log("Claim payment modal found in DOM");
-            
             // Add direct click handler to close button
             const closeClaimModalBtn = document.getElementById('closeClaimModalBtn');
             if (closeClaimModalBtn) {
-                console.log("Close claim modal button found");
                 closeClaimModalBtn.addEventListener('click', function() {
-                    console.log("Close button clicked");
                     claimPaymentModal.classList.add('hidden');
                 });
             }
@@ -668,7 +656,6 @@
             // Close modal when clicking outside
             window.addEventListener('click', function(event) {
                 if (event.target === claimPaymentModal) {
-                    console.log("Clicked outside claim payment modal - closing");
                     claimPaymentModal.classList.add('hidden');
                 }
             });
@@ -679,12 +666,9 @@
         // Add Payment Modal (Owner only)
         const addPaymentBtn = document.getElementById('addPaymentBtn');
         if (addPaymentBtn) {
-            console.log("Add payment button found");
             const addPaymentModal = document.getElementById('addPaymentModal');
             if (addPaymentModal) {
-                console.log("Add payment modal found");
                 addPaymentBtn.addEventListener('click', function() {
-                    console.log("Opening add payment modal");
                     addPaymentModal.classList.remove('hidden');
                 });
                 
@@ -701,11 +685,7 @@
                         addPaymentModal.classList.add('hidden');
                     }
                 });
-            } else {
-                console.log("Add payment modal not found");
             }
-        } else {
-            console.log("Add payment button not found");
         }
     });
 </script>

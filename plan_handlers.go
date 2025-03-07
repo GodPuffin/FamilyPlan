@@ -661,8 +661,7 @@ func handlePlanDetails(app *pocketbase.PocketBase, templatesFS embed.FS) echo.Ha
 			// Get active memberships for this month
 			activeMemberships, err := getActiveMembershipsForMonth(app, plan.Id, currentDate)
 			if err != nil {
-				// Log error but don't stop processing
-				fmt.Printf("Error getting active memberships for %s: %v\n", currentDate.Format("2006-01"), err)
+				// Continue with next month even if there's an error
 				continue
 			}
 

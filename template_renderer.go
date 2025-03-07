@@ -34,13 +34,17 @@ var templateFuncs = template.FuncMap{
 		}
 		return s[i:j]
 	},
-	"div": func(a, b float64) float64 {
-		if b == 0 {
-			fmt.Println("Division by zero prevented in template function div")
+	"div": func(a, b interface{}) float64 {
+		// Convert to float64 for division
+		af, ok1 := toFloat(a)
+		bf, ok2 := toFloat(b)
+
+		if !ok1 || !ok2 || bf == 0 {
+			// Return 0 for invalid input or division by zero
 			return 0
 		}
-		fmt.Printf("Template div function called: %f / %f = %f\n", a, b, a/b)
-		return a / b
+
+		return af / bf
 	},
 	"mul": func(a, b float64) float64 {
 		return a * b
@@ -51,6 +55,24 @@ var templateFuncs = template.FuncMap{
 	"float64": func(i int) float64 {
 		return float64(i)
 	},
+}
+
+// Convert various types to float64
+func toFloat(value interface{}) (float64, bool) {
+	switch v := value.(type) {
+	case float64:
+		return v, true
+	case float32:
+		return float64(v), true
+	case int:
+		return float64(v), true
+	case int64:
+		return float64(v), true
+	case int32:
+		return float64(v), true
+	default:
+		return 0, false
+	}
 }
 
 // Render renders a template with the given name and data
