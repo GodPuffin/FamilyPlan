@@ -95,32 +95,20 @@ When you first run the application, you'll need to set up the PocketBase databas
 
 ## Deployment
 
-### DigitalOcean App Platform
+This application is currently deployed at [familyplanmanager.xyz](https://familyplanmanager.xyz) using a DigitalOcean Droplet with the following configuration:
 
-This application is designed to be deployed on DigitalOcean App Platform:
+- Ubuntu 24.04 LTS
+- Nginx as a reverse proxy
+- SSL certificates from Let's Encrypt
+- UFW firewall for security
+- Systemd for service management
 
-1. Create a new app in DigitalOcean App Platform
-2. Connect to your GitHub repository
-3. DigitalOcean will automatically detect the Go application
-4. Configure your domain in the settings
-5. App Platform will handle HTTPS and deployment automatically
+### Common Deployment Notes
 
-### Manual Deployment
-
-1. Build the application:
-   ```
-   make build
-   ```
-
-2. Copy the binary and required files to your server:
-   ```
-   scp app templates/ static/ user@your-server:/path/to/deployment/
-   ```
-
-3. Run the application on your server:
-   ```
-   ./app
-   ```
+- The application runs on port 8090 by default
+- When deploying, ensure IPv4 binding with `--http=0.0.0.0:8090`
+- For security, set up a firewall allowing only necessary ports (SSH, HTTP, HTTPS)
+- Use a reverse proxy (like Nginx) for SSL termination and to route traffic to the application
 
 ## Contributing
 
@@ -138,6 +126,8 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 - [HTMX](https://htmx.org/)
 - [PocketBase](https://pocketbase.io/)
 - [Tailwind CSS](https://tailwindcss.com/)
+- [Nginx](https://nginx.org/)
+- [Certbot/Let's Encrypt](https://certbot.eff.org/)
 
 ## License
 
