@@ -30,6 +30,7 @@ type Member struct {
 	Balance        float64 `json:"balance"`
 	LeaveRequested bool    `json:"leave_requested"`
 	DateEnded      string  `json:"date_ended"`
+	IsArtificial   bool    `json:"is_artificial"`
 }
 
 // JoinRequest represents a user's request to join a family plan

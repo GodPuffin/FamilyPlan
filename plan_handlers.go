@@ -226,6 +226,7 @@ func handleCreateFamilyPlan(app *pocketbase.PocketBase) echo.HandlerFunc {
 		newMembership := models.NewRecord(membershipsCollection)
 		newMembership.Set("plan_id", newPlan.Id)
 		newMembership.Set("user_id", session.UserId)
+		newMembership.Set("is_artificial", false)
 
 		// Save the membership
 		_ = app.Dao().SaveRecord(newMembership)
@@ -464,22 +465,44 @@ func handlePlanDetails(app *pocketbase.PocketBase, templatesFS embed.FS) echo.Ha
 					continue
 				}
 
-				userRecord, err := app.Dao().FindRecordById(usersCollection.Id, userId)
-				if err == nil && userRecord != nil {
-					// Calculate member's balance
-					balance := 0.0
-					// Always calculate balance for all members regardless of who is viewing
-					balance, _ = calculateMemberBalance(app, plan.Id, userId)
+				// Check if this is an artificial member
+				isArtificial := membership.GetBool("is_artificial")
+				memberName := membership.GetString("name")
+
+				if isArtificial {
+					// For artificial members, use the name stored in the membership
+					balance, _ := calculateMemberBalance(app, plan.Id, userId)
 
 					members = append(members, Member{
-						Id:             userRecord.Id,
-						Username:       userRecord.GetString("username"),
-						Name:           userRecord.GetString("name"),
+						Id:             userId,
+						Username:       "",
+						Name:           memberName,
 						Balance:        balance,
 						LeaveRequested: membership.GetBool("leave_requested"),
 						DateEnded:      membership.GetDateTime("date_ended").String(),
+						IsArtificial:   true,
 					})
-					uniqueMembers[userRecord.Id] = true
+					uniqueMembers[userId] = true
+				} else {
+					// For real members, get the user record
+					userRecord, err := app.Dao().FindRecordById(usersCollection.Id, userId)
+					if err == nil && userRecord != nil {
+						// Calculate member's balance
+						balance := 0.0
+						// Always calculate balance for all members regardless of who is viewing
+						balance, _ = calculateMemberBalance(app, plan.Id, userId)
+
+						members = append(members, Member{
+							Id:             userRecord.Id,
+							Username:       userRecord.GetString("username"),
+							Name:           userRecord.GetString("name"),
+							Balance:        balance,
+							LeaveRequested: membership.GetBool("leave_requested"),
+							DateEnded:      membership.GetDateTime("date_ended").String(),
+							IsArtificial:   false,
+						})
+						uniqueMembers[userRecord.Id] = true
+					}
 				}
 			}
 
@@ -539,9 +562,22 @@ func handlePlanDetails(app *pocketbase.PocketBase, templatesFS embed.FS) echo.Ha
 							// Get user details for each payment
 							for _, paymentRecord := range pendingPaymentRecords {
 								userId := paymentRecord.GetString("user_id")
-								userRecord, err := app.Dao().FindRecordById(usersCollection.Id, userId)
-								if err == nil && userRecord != nil {
-									// Add to pending payments
+
+								// Check if this is a payment from an artificial member
+								isArtificialPayment := false
+								artificialUserName := ""
+
+								// Try to find a membership record to check if this is an artificial member
+								artificialMembership, _ := app.Dao().FindFirstRecordByFilter(membershipsCollection.Id,
+									fmt.Sprintf("plan_id = '%s' && user_id = '%s' && is_artificial = true", plan.Id, userId))
+
+								if artificialMembership != nil {
+									isArtificialPayment = true
+									artificialUserName = artificialMembership.GetString("name")
+								}
+
+								if isArtificialPayment {
+									// For artificial members, use the name from the membership
 									forMonth := ""
 									forMonthDate := paymentRecord.GetDateTime("for_month")
 									if !forMonthDate.IsZero() {
@@ -557,9 +593,33 @@ func handlePlanDetails(app *pocketbase.PocketBase, templatesFS embed.FS) echo.Ha
 										Status:   paymentRecord.GetString("status"),
 										Notes:    paymentRecord.GetString("notes"),
 										ForMonth: forMonth,
-										Username: userRecord.GetString("username"),
-										Name:     userRecord.GetString("name"),
+										Username: "",
+										Name:     artificialUserName,
 									})
+								} else {
+									// For real members, get the user record
+									userRecord, err := app.Dao().FindRecordById(usersCollection.Id, userId)
+									if err == nil && userRecord != nil {
+										// Add to pending payments
+										forMonth := ""
+										forMonthDate := paymentRecord.GetDateTime("for_month")
+										if !forMonthDate.IsZero() {
+											forMonth = forMonthDate.String()[:7] // Get YYYY-MM part
+										}
+
+										pendingPayments = append(pendingPayments, Payment{
+											Id:       paymentRecord.Id,
+											PlanId:   paymentRecord.GetString("plan_id"),
+											UserId:   userId,
+											Amount:   paymentRecord.GetFloat("amount"),
+											Date:     paymentRecord.GetDateTime("date").String()[:10], // Get YYYY-MM-DD part
+											Status:   paymentRecord.GetString("status"),
+											Notes:    paymentRecord.GetString("notes"),
+											ForMonth: forMonth,
+											Username: userRecord.GetString("username"),
+											Name:     userRecord.GetString("name"),
+										})
+									}
 								}
 							}
 						}
@@ -573,8 +633,22 @@ func handlePlanDetails(app *pocketbase.PocketBase, templatesFS embed.FS) echo.Ha
 						if err == nil {
 							for _, paymentRecord := range allPaymentRecords {
 								userId := paymentRecord.GetString("user_id")
-								userRecord, err := app.Dao().FindRecordById(usersCollection.Id, userId)
-								if err == nil && userRecord != nil {
+
+								// Check if this is a payment from an artificial member
+								isArtificialPayment := false
+								artificialUserName := ""
+
+								// Try to find a membership record to check if this is an artificial member
+								artificialMembership, _ := app.Dao().FindFirstRecordByFilter(membershipsCollection.Id,
+									fmt.Sprintf("plan_id = '%s' && user_id = '%s' && is_artificial = true", plan.Id, userId))
+
+								if artificialMembership != nil {
+									isArtificialPayment = true
+									artificialUserName = artificialMembership.GetString("name")
+								}
+
+								if isArtificialPayment {
+									// For artificial members, use the name from the membership
 									forMonth := ""
 									forMonthDate := paymentRecord.GetDateTime("for_month")
 									if !forMonthDate.IsZero() {
@@ -590,9 +664,32 @@ func handlePlanDetails(app *pocketbase.PocketBase, templatesFS embed.FS) echo.Ha
 										Status:   paymentRecord.GetString("status"),
 										Notes:    paymentRecord.GetString("notes"),
 										ForMonth: forMonth,
-										Username: userRecord.GetString("username"),
-										Name:     userRecord.GetString("name"),
+										Username: "",
+										Name:     artificialUserName,
 									})
+								} else {
+									// For real members, look up the user record
+									userRecord, err := app.Dao().FindRecordById(usersCollection.Id, userId)
+									if err == nil && userRecord != nil {
+										forMonth := ""
+										forMonthDate := paymentRecord.GetDateTime("for_month")
+										if !forMonthDate.IsZero() {
+											forMonth = forMonthDate.String()[:7] // Get YYYY-MM part
+										}
+
+										allPayments = append(allPayments, Payment{
+											Id:       paymentRecord.Id,
+											PlanId:   paymentRecord.GetString("plan_id"),
+											UserId:   userId,
+											Amount:   paymentRecord.GetFloat("amount"),
+											Date:     paymentRecord.GetDateTime("date").String()[:10], // Get YYYY-MM-DD part
+											Status:   paymentRecord.GetString("status"),
+											Notes:    paymentRecord.GetString("notes"),
+											ForMonth: forMonth,
+											Username: userRecord.GetString("username"),
+											Name:     userRecord.GetString("name"),
+										})
+									}
 								}
 							}
 						}
@@ -607,7 +704,7 @@ func handlePlanDetails(app *pocketbase.PocketBase, templatesFS embed.FS) echo.Ha
 						forMonth := ""
 						forMonthDate := paymentRecord.GetDateTime("for_month")
 						if !forMonthDate.IsZero() {
-							forMonth = forMonthDate.String()[:7] // Get YYYY-MM part
+							forMonth = forMonthDate.String()[:7]
 						}
 
 						userPayments = append(userPayments, Payment{
@@ -615,7 +712,7 @@ func handlePlanDetails(app *pocketbase.PocketBase, templatesFS embed.FS) echo.Ha
 							PlanId:   paymentRecord.GetString("plan_id"),
 							UserId:   paymentRecord.GetString("user_id"),
 							Amount:   paymentRecord.GetFloat("amount"),
-							Date:     paymentRecord.GetDateTime("date").String()[:10], // Get YYYY-MM-DD part
+							Date:     paymentRecord.GetDateTime("date").String()[:10],
 							Status:   paymentRecord.GetString("status"),
 							Notes:    paymentRecord.GetString("notes"),
 							ForMonth: forMonth,

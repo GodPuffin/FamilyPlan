@@ -51,4 +51,8 @@ func setupRoutes(app *pocketbase.PocketBase, e *echo.Echo, templatesFS embed.FS)
 	authenticated.POST("/:join_code/approve-payment", handleApprovePayment(app))
 	authenticated.POST("/:join_code/reject-payment", handleRejectPayment(app))
 	authenticated.POST("/:join_code/add-payment", handleAddManualPayment(app))
+
+	// Artificial member routes
+	authenticated.POST("/:join_code/add-artificial-member", handleAddArtificialMember(app))
+	authenticated.POST("/:join_code/transfer-membership", handleTransferMembership(app))
 }

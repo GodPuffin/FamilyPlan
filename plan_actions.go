@@ -110,6 +110,7 @@ func handleApproveRequest(app *pocketbase.PocketBase) echo.HandlerFunc {
 			newMembership := models.NewRecord(membershipsCollection)
 			newMembership.Set("plan_id", plan.Id)
 			newMembership.Set("user_id", userId)
+			newMembership.Set("is_artificial", false)
 
 			if err := app.Dao().SaveRecord(newMembership); err != nil {
 				return err
@@ -473,6 +474,7 @@ func handleAddManualPayment(app *pocketbase.PocketBase) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		session := c.Get("session").(SessionData)
 		joinCode := c.PathParam("join_code")
+		userId := c.FormValue("user_id")
 
 		// Find the plan by join code
 		plansCollection, err := app.Dao().FindCollectionByNameOrId("family_plans")
@@ -494,40 +496,24 @@ func handleAddManualPayment(app *pocketbase.PocketBase) echo.HandlerFunc {
 		}
 
 		if !isOwner {
-			// Not the owner
+			// Only owner can add manual payments
 			return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/%s", joinCode))
 		}
 
-		// Parse form data
-		if err := c.Request().ParseForm(); err != nil {
-			return err
-		}
-
-		userId := c.FormValue("user_id")
-		if userId == "" {
-			return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/%s", joinCode))
-		}
-
-		// Verify the user is still an active member
-		activeMembershipsCollection, err := app.Dao().FindCollectionByNameOrId("memberships")
+		// Verify user is a member of the plan (or an artificial member)
+		membershipsCollection, err := app.Dao().FindCollectionByNameOrId("memberships")
 		if err != nil {
 			return err
 		}
 
-		activeMembership, err := app.Dao().FindFirstRecordByFilter(activeMembershipsCollection.Id,
+		membership, err := app.Dao().FindFirstRecordByFilter(membershipsCollection.Id,
 			fmt.Sprintf("plan_id = '%s' && user_id = '%s'", plan.Id, userId))
-		if err != nil || activeMembership == nil {
-			// Membership not found
+		if err != nil || membership == nil {
+			// User is not a member
 			return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/%s", joinCode))
 		}
 
-		// Check if the user has left the plan
-		dateEnded := activeMembership.GetDateTime("date_ended")
-		if !dateEnded.IsZero() {
-			// User has already left
-			return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/%s", joinCode))
-		}
-
+		// Parse payment amount
 		amountStr := c.FormValue("amount")
 		amount, err := strconv.ParseFloat(amountStr, 64)
 		if err != nil || amount == 0 {
@@ -572,12 +558,12 @@ func handleAddManualPayment(app *pocketbase.PocketBase) echo.HandlerFunc {
 		balance, _ := calculateMemberBalance(app, plan.Id, userId)
 
 		// Check if the user has requested to leave
-		membershipsCollection, err := app.Dao().FindCollectionByNameOrId("memberships")
+		membershipsCollection, err = app.Dao().FindCollectionByNameOrId("memberships")
 		if err != nil {
 			return err
 		}
 
-		membership, err := app.Dao().FindFirstRecordByFilter(membershipsCollection.Id,
+		membership, err = app.Dao().FindFirstRecordByFilter(membershipsCollection.Id,
 			fmt.Sprintf("plan_id = '%s' && user_id = '%s'", plan.Id, userId))
 		if err == nil && membership != nil && membership.GetBool("leave_requested") && balance >= 0 {
 			// Mark the membership as ended instead of deleting it
@@ -990,5 +976,172 @@ func handleUpdatePlan(app *pocketbase.PocketBase) echo.HandlerFunc {
 
 		// Redirect back to plan details
 		return c.Redirect(http.StatusSeeOther, "/"+joinCode)
+	}
+}
+
+// Handler for adding an artificial member
+func handleAddArtificialMember(app *pocketbase.PocketBase) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		session := c.Get("session").(SessionData)
+		joinCode := c.PathParam("join_code")
+		memberName := c.FormValue("name")
+
+		if memberName == "" {
+			// Name is required
+			return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/%s", joinCode))
+		}
+
+		// Find the plan by join code
+		plansCollection, err := app.Dao().FindCollectionByNameOrId("family_plans")
+		if err != nil {
+			return err
+		}
+
+		plan, err := app.Dao().FindFirstRecordByData(plansCollection.Id, "join_code", joinCode)
+		if err != nil || plan == nil {
+			// Plan not found
+			return c.Redirect(http.StatusSeeOther, "/family-plans")
+		}
+
+		// Check if user is the owner
+		isOwner := false
+		ownerSlice := plan.GetStringSlice("owner")
+		if len(ownerSlice) > 0 && ownerSlice[0] == session.UserId {
+			isOwner = true
+		}
+
+		if !isOwner {
+			// Only owner can add artificial members
+			return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/%s", joinCode))
+		}
+
+		// Create a new artificial membership
+		membershipsCollection, err := app.Dao().FindCollectionByNameOrId("memberships")
+		if err != nil {
+			return err
+		}
+
+		// Generate a unique ID for the artificial member
+		artificialUserId := fmt.Sprintf("artificial_%s_%d", plan.Id, time.Now().UnixNano())
+
+		// Create the membership record
+		newMembership := models.NewRecord(membershipsCollection)
+		newMembership.Set("plan_id", plan.Id)
+		newMembership.Set("user_id", artificialUserId)
+		newMembership.Set("is_artificial", true)
+		newMembership.Set("name", memberName)
+
+		if err := app.Dao().SaveRecord(newMembership); err != nil {
+			return err
+		}
+
+		// Redirect back to plan page
+		return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/%s", joinCode))
+	}
+}
+
+// Handler for transferring membership from real user to artificial user
+func handleTransferMembership(app *pocketbase.PocketBase) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		session := c.Get("session").(SessionData)
+		joinCode := c.PathParam("join_code")
+		realUserId := c.FormValue("user_id")
+		artificialMemberId := c.FormValue("artificial_member_id")
+
+		if realUserId == "" || artificialMemberId == "" {
+			// Required fields
+			return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/%s", joinCode))
+		}
+
+		// Find the plan by join code
+		plansCollection, err := app.Dao().FindCollectionByNameOrId("family_plans")
+		if err != nil {
+			return err
+		}
+
+		plan, err := app.Dao().FindFirstRecordByData(plansCollection.Id, "join_code", joinCode)
+		if err != nil || plan == nil {
+			// Plan not found
+			return c.Redirect(http.StatusSeeOther, "/family-plans")
+		}
+
+		// Check if user is the owner
+		isOwner := false
+		ownerSlice := plan.GetStringSlice("owner")
+		if len(ownerSlice) > 0 && ownerSlice[0] == session.UserId {
+			isOwner = true
+		}
+
+		if !isOwner {
+			// Only owner can transfer memberships
+			return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/%s", joinCode))
+		}
+
+		// Get memberships collection
+		membershipsCollection, err := app.Dao().FindCollectionByNameOrId("memberships")
+		if err != nil {
+			return err
+		}
+
+		// Get the artificial membership
+		artificialMembership, err := app.Dao().FindFirstRecordByFilter(membershipsCollection.Id,
+			fmt.Sprintf("plan_id = '%s' && user_id = '%s' && is_artificial = true", plan.Id, artificialMemberId))
+		if err != nil || artificialMembership == nil {
+			// Artificial membership not found
+			return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/%s", joinCode))
+		}
+
+		// Find the join request
+		joinRequestsCollection, err := app.Dao().FindCollectionByNameOrId("join_requests")
+		if err != nil {
+			return err
+		}
+
+		request, err := app.Dao().FindFirstRecordByFilter(joinRequestsCollection.Id,
+			fmt.Sprintf("plan_id = '%s' && user_id = '%s'", plan.Id, realUserId))
+		if err != nil || request == nil {
+			// Request not found
+			return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/%s", joinCode))
+		}
+
+		// Get payments collection
+		paymentsCollection, err := app.Dao().FindCollectionByNameOrId("payments")
+		if err != nil {
+			return err
+		}
+
+		// Update all payments from artificial member to real member
+		artificialPayments, err := app.Dao().FindRecordsByFilter(paymentsCollection.Id,
+			fmt.Sprintf("plan_id = '%s' && user_id = '%s'", plan.Id, artificialMemberId), "", 100, 0)
+		if err == nil {
+			for _, payment := range artificialPayments {
+				// Update payment to new user ID
+				payment.Set("user_id", realUserId)
+				_ = app.Dao().SaveRecord(payment)
+			}
+		}
+
+		// Delete the artificial membership
+		if err := app.Dao().DeleteRecord(artificialMembership); err != nil {
+			return err
+		}
+
+		// Create new membership for the real user
+		newMembership := models.NewRecord(membershipsCollection)
+		newMembership.Set("plan_id", plan.Id)
+		newMembership.Set("user_id", realUserId)
+		newMembership.Set("is_artificial", false)
+
+		if err := app.Dao().SaveRecord(newMembership); err != nil {
+			return err
+		}
+
+		// Delete the join request
+		if err := app.Dao().DeleteRecord(request); err != nil {
+			return err
+		}
+
+		// Redirect back to plan page
+		return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/%s", joinCode))
 	}
 }
