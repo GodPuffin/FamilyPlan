@@ -1131,6 +1131,8 @@ func handleTransferMembership(app *pocketbase.PocketBase) echo.HandlerFunc {
 		newMembership.Set("plan_id", plan.Id)
 		newMembership.Set("user_id", realUserId)
 		newMembership.Set("is_artificial", false)
+		// Preserve the original creation date from the artificial membership
+		newMembership.Set("created", artificialMembership.GetDateTime("created"))
 
 		if err := app.Dao().SaveRecord(newMembership); err != nil {
 			return err
