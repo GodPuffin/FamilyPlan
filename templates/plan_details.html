@@ -190,7 +190,7 @@
                     <h3 class="text-lg font-semibold mb-4">Your Payments</h3>
                     <button type="button" id="claimPaymentBtn" 
                         class="bg-blue-500 hover:bg-blue-700 text-white text-sm py-1 px-3 rounded focus:outline-none"
-                        onclick="var modal = document.getElementById('claimPaymentModal'); if(modal) { modal.classList.remove('hidden'); } else { console.error('Modal not found!'); }">
+                        _="on click remove .hidden from #claimPaymentModal">
                         Claim Payment
                     </button>
                 </div>
@@ -242,7 +242,9 @@
             <div class="mb-8">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-semibold">Member Payments</h3>
-                    <button id="addPaymentBtn" class="bg-blue-500 hover:bg-blue-700 text-white text-sm py-1 px-3 rounded focus:outline-none">
+                    <button id="addPaymentBtn" 
+                            class="bg-blue-500 hover:bg-blue-700 text-white text-sm py-1 px-3 rounded focus:outline-none"
+                            _="on click remove .hidden from #addPaymentModal">
                         Add Manual Payment
                     </button>
                 </div>
@@ -352,8 +354,19 @@
                         {{.plan.JoinCode}}
                     </span>
                     <button class="absolute right-3 top-3 text-gray-500 hover:text-gray-700" id="copyCodeBtn"
-                        data-code="{{.plan.JoinCode}}">
-                        <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-clipboard">
+                        data-code="{{.plan.JoinCode}}"
+                        _="on click
+                            set $code to my.dataset.code
+                            call navigator.clipboard.writeText($code)
+                            remove .hidden from #copyFeedback
+                            add .opacity-100 to #copyFeedback
+                            remove .opacity-0 from #copyFeedback
+                            wait 2s
+                            add .opacity-0 to #copyFeedback
+                            remove .opacity-100 from #copyFeedback
+                            wait 300ms
+                            add .hidden to #copyFeedback">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-clipboard">
                             <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
                             <path d="M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2" />
                             <path d="M9 3m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v0a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z" />
@@ -365,7 +378,9 @@
                 </div>
                 
                 <div class="mt-4 flex justify-end">
-                    <button id="createArtificialMemberBtn" class="bg-blue-500 hover:bg-blue-700 text-white text-sm py-1 px-3 rounded focus:outline-none">
+                    <button id="createArtificialMemberBtn" 
+                            class="bg-blue-500 hover:bg-blue-700 text-white text-sm py-1 px-3 rounded focus:outline-none"
+                            _="on click remove .hidden from #artificialMemberModal">
                         Add Artificial Member
                     </button>
                 </div>
@@ -406,7 +421,15 @@
                             <button type="button" 
                                 class="bg-yellow-500 hover:bg-yellow-700 text-white py-1 px-3 rounded text-sm focus:outline-none transferBtn"
                                 data-userid="{{.UserId}}"
-                                data-username="{{if .Name}}{{.Name}}{{else}}{{.Username}}{{end}}">
+                                data-username="{{if .Name}}{{.Name}}{{else}}{{.Username}}{{end}}"
+                                _="on click
+                                    remove .hidden from #transferModal
+                                    set #transferUserId.value to my.dataset.userid
+                                    set #transferUserName.innerText to my.dataset.username
+                                    if #artificialMemberSelect.options.length <= 1
+                                        alert('No artificial members available for transfer. Please create an artificial member first.')
+                                        halt
+                                    end">
                                 Transfer
                             </button>
                         </div>
@@ -419,7 +442,9 @@
             <!-- Plan Options Button (Only for owner) -->
             {{if .is_owner}}
             <div class="mt-8 text-center">
-                <button id="openOptionsBtn" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm py-1 px-3 rounded focus:outline-none">
+                <button id="openOptionsBtn" 
+                        class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm py-1 px-3 rounded focus:outline-none"
+                        _="on click remove .hidden from #optionsModal">
                     Plan Options
                 </button>
             </div>
@@ -459,11 +484,15 @@
 
             <!-- Plan Options Modal (Only for owner) -->
             {{if .is_owner}}
-            <div id="optionsModal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden">
+            <div id="optionsModal" 
+                 class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden"
+                 _="on click if event.target.id == 'optionsModal' then add .hidden to me end">
                 <div class="bg-white rounded-lg p-8 max-w-md w-full">
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="text-xl font-bold">Plan Options</h3>
-                        <button id="closeOptionsBtn" class="text-gray-500 hover:text-gray-700">
+                        <button id="closeOptionsBtn" 
+                                class="text-gray-500 hover:text-gray-700"
+                                _="on click add .hidden to #optionsModal">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                             </svg>
@@ -518,11 +547,15 @@
 
             <!-- Add Manual Payment Modal (Owner only) -->
             {{if .is_owner}}
-            <div id="addPaymentModal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden">
+            <div id="addPaymentModal" 
+                 class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden"
+                 _="on click if event.target.id == 'addPaymentModal' then add .hidden to me end">
                 <div class="bg-white rounded-lg p-6 max-w-md w-full">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-xl font-bold">Add Manual Payment</h3>
-                        <button id="closeAddPaymentModalBtn" class="text-gray-500 hover:text-gray-700">
+                        <button id="closeAddPaymentModalBtn" 
+                                class="text-gray-500 hover:text-gray-700"
+                                _="on click add .hidden to #addPaymentModal">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                             </svg>
@@ -561,11 +594,16 @@
             {{end}}
 
             <!-- Claim Payment Modal (Always present in the DOM, but only functional for non-owner members) -->
-            <div id="claimPaymentModal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden" data-modal-type="claim-payment">
+            <div id="claimPaymentModal" 
+                 class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden" 
+                 data-modal-type="claim-payment"
+                 _="on click if event.target.id == 'claimPaymentModal' then add .hidden to me end">
                 <div class="bg-white rounded-lg p-6 max-w-md w-full">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-xl font-bold">Claim Payment</h3>
-                        <button id="closeClaimModalBtn" class="text-gray-500 hover:text-gray-700">
+                        <button id="closeClaimModalBtn" 
+                                class="text-gray-500 hover:text-gray-700"
+                                _="on click add .hidden to #claimPaymentModal">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                             </svg>
@@ -592,11 +630,15 @@
 
             <!-- Add a modal for creating an artificial member -->
             {{if .is_owner}}
-            <div id="artificialMemberModal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden">
+            <div id="artificialMemberModal" 
+                 class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden"
+                 _="on click if event.target.id == 'artificialMemberModal' then add .hidden to me end">
                 <div class="bg-white rounded-lg p-6 max-w-md w-full">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-xl font-bold">Add Artificial Member</h3>
-                        <button id="closeArtificialMemberBtn" class="text-gray-500 hover:text-gray-700">
+                        <button id="closeArtificialMemberBtn" 
+                                class="text-gray-500 hover:text-gray-700"
+                                _="on click add .hidden to #artificialMemberModal">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                             </svg>
@@ -616,13 +658,18 @@
                     </form>
                 </div>
             </div>
+            {{end}}
 
             <!-- Add a modal for transferring membership -->
-            <div id="transferModal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden">
+            <div id="transferModal" 
+                 class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden"
+                 _="on click if event.target.id == 'transferModal' then add .hidden to me end">
                 <div class="bg-white rounded-lg p-6 max-w-md w-full">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-xl font-bold">Transfer Membership</h3>
-                        <button id="closeTransferBtn" class="text-gray-500 hover:text-gray-700">
+                        <button id="closeTransferBtn" 
+                                class="text-gray-500 hover:text-gray-700"
+                                _="on click add .hidden to #transferModal">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                             </svg>
@@ -648,184 +695,7 @@
                     </form>
                 </div>
             </div>
-            {{end}}
         {{end}}
     </div>
 </div>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Copy invitation code to clipboard
-        const copyBtn = document.getElementById('copyCodeBtn');
-        if (copyBtn) {
-            copyBtn.addEventListener('click', function() {
-                const code = this.getAttribute('data-code');
-                const feedbackEl = document.getElementById('copyFeedback');
-                
-                navigator.clipboard.writeText(code).then(function() {
-                    // Show feedback
-                    feedbackEl.classList.remove('opacity-0');
-                    feedbackEl.classList.add('opacity-100');
-                    
-                    // Hide feedback after 2 seconds
-                    setTimeout(function() {
-                        feedbackEl.classList.remove('opacity-100');
-                        feedbackEl.classList.add('opacity-0');
-                        
-                        // Reset text after fade out
-                        setTimeout(function() {
-                            feedbackEl.textContent = 'Copied!';
-                        }, 300);
-                    }, 2000);
-                }).catch(function() {
-                    if (feedbackEl) {
-                        feedbackEl.textContent = 'Failed to copy';
-                        feedbackEl.classList.remove('opacity-0');
-                        feedbackEl.classList.add('opacity-100');
-                        
-                        setTimeout(function() {
-                            feedbackEl.classList.remove('opacity-100');
-                            feedbackEl.classList.add('opacity-0');
-                        }, 2000);
-                    }
-                });
-            });
-        }
-
-        // Options Modal
-        const optionsModal = document.getElementById('optionsModal');
-        const openOptionsBtn = document.getElementById('openOptionsBtn');
-        if (openOptionsBtn && optionsModal) {
-            openOptionsBtn.addEventListener('click', function() {
-                optionsModal.classList.remove('hidden');
-            });
-
-            const closeOptionsBtn = document.getElementById('closeOptionsBtn');
-            if (closeOptionsBtn) {
-                closeOptionsBtn.addEventListener('click', function() {
-                    optionsModal.classList.add('hidden');
-                });
-            }
-
-            // Close modal when clicking outside
-            window.addEventListener('click', function(event) {
-                if (event.target === optionsModal) {
-                    optionsModal.classList.add('hidden');
-                }
-            });
-        }
-        
-        // Claim Payment Modal - Simplified direct access approach
-        
-        // Check if modal exists
-        const claimPaymentModal = document.getElementById('claimPaymentModal');
-        if (claimPaymentModal) {
-            // Add direct click handler to close button
-            const closeClaimModalBtn = document.getElementById('closeClaimModalBtn');
-            if (closeClaimModalBtn) {
-                closeClaimModalBtn.addEventListener('click', function() {
-                    claimPaymentModal.classList.add('hidden');
-                });
-            }
-            
-            // Close modal when clicking outside
-            window.addEventListener('click', function(event) {
-                if (event.target === claimPaymentModal) {
-                    claimPaymentModal.classList.add('hidden');
-                }
-            });
-        } else {
-            console.error("Claim payment modal not found in DOM!");
-        }
-        
-        // Add Payment Modal (Owner only)
-        const addPaymentBtn = document.getElementById('addPaymentBtn');
-        if (addPaymentBtn) {
-            const addPaymentModal = document.getElementById('addPaymentModal');
-            if (addPaymentModal) {
-                addPaymentBtn.addEventListener('click', function() {
-                    addPaymentModal.classList.remove('hidden');
-                });
-                
-                const closeAddPaymentModalBtn = document.getElementById('closeAddPaymentModalBtn');
-                if (closeAddPaymentModalBtn) {
-                    closeAddPaymentModalBtn.addEventListener('click', function() {
-                        addPaymentModal.classList.add('hidden');
-                    });
-                }
-                
-                // Close modal when clicking outside
-                window.addEventListener('click', function(event) {
-                    if (event.target === addPaymentModal) {
-                        addPaymentModal.classList.add('hidden');
-                    }
-                });
-            }
-        }
-
-        // Artificial Member Modal
-        const artificialMemberBtn = document.getElementById('createArtificialMemberBtn');
-        const artificialMemberModal = document.getElementById('artificialMemberModal');
-        if (artificialMemberBtn && artificialMemberModal) {
-            artificialMemberBtn.addEventListener('click', function() {
-                artificialMemberModal.classList.remove('hidden');
-            });
-            
-            const closeArtificialMemberBtn = document.getElementById('closeArtificialMemberBtn');
-            if (closeArtificialMemberBtn) {
-                closeArtificialMemberBtn.addEventListener('click', function() {
-                    artificialMemberModal.classList.add('hidden');
-                });
-            }
-            
-            // Close modal when clicking outside
-            window.addEventListener('click', function(event) {
-                if (event.target === artificialMemberModal) {
-                    artificialMemberModal.classList.add('hidden');
-                }
-            });
-        }
-        
-        // Transfer Membership Modal
-        const transferModal = document.getElementById('transferModal');
-        if (transferModal) {
-            const transferButtons = document.querySelectorAll('.transferBtn');
-            const closeTransferBtn = document.getElementById('closeTransferBtn');
-            const transferUserId = document.getElementById('transferUserId');
-            const transferUserName = document.getElementById('transferUserName');
-            
-            transferButtons.forEach(function(button) {
-                button.addEventListener('click', function() {
-                    const userId = this.getAttribute('data-userid');
-                    const userName = this.getAttribute('data-username');
-                    
-                    transferUserId.value = userId;
-                    transferUserName.textContent = userName;
-                    
-                    const artificialMemberSelect = document.getElementById('artificialMemberSelect');
-                    if (artificialMemberSelect && artificialMemberSelect.options.length <= 1) {
-                        // No artificial members to transfer to
-                        alert('No artificial members available for transfer. Please create an artificial member first.');
-                        return;
-                    }
-                    
-                    transferModal.classList.remove('hidden');
-                });
-            });
-            
-            if (closeTransferBtn) {
-                closeTransferBtn.addEventListener('click', function() {
-                    transferModal.classList.add('hidden');
-                });
-            }
-            
-            // Close modal when clicking outside
-            window.addEventListener('click', function(event) {
-                if (event.target === transferModal) {
-                    transferModal.classList.add('hidden');
-                }
-            });
-        }
-    });
-</script>
 {{end}} 

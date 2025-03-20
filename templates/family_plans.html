@@ -39,10 +39,14 @@
         {{end}}
 
         <div class="flex flex-col md:flex-row gap-4 justify-center mt-6">
-            <button id="createPlanBtn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors">
+            <button id="createPlanBtn" 
+                    class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+                    _="on click remove .hidden from #createPlanModal">
                 Create New Family Plan
             </button>
-            <button id="joinPlanBtn" class="bg-green-500 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors">
+            <button id="joinPlanBtn" 
+                    class="bg-green-500 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+                    _="on click remove .hidden from #joinPlanModal">
                 Join Existing Plan
             </button>
         </div>
@@ -50,18 +54,27 @@
 </div>
 
 <!-- Create Plan Modal -->
-<div id="createPlanModal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden">
+<div id="createPlanModal" 
+     class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden"
+     _="on click if event.target.id == 'createPlanModal' then add .hidden to me end">
     <div class="bg-white rounded-lg p-8 max-w-md w-full">
         <div class="flex justify-between items-center mb-6">
             <h3 class="text-xl font-bold">Create New Family Plan</h3>
-            <button class="modal-close text-gray-700 hover:text-gray-900">
+            <button class="modal-close text-gray-700 hover:text-gray-900"
+                    _="on click add .hidden to #createPlanModal">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                 </svg>
             </button>
         </div>
         
-        <form action="/family-plans/create" method="post">
+        <form hx-post="/family-plans/create" 
+              hx-target="body"
+              _="on htmx:afterRequest 
+                  add .hidden to #createPlanModal
+                  if event.detail.successful
+                    window.location.href = '/family-plans'
+                  end">
             <div class="mb-4">
                 <label for="planName" class="block text-gray-700 text-sm font-bold mb-2">Plan Name</label>
                 <input type="text" id="planName" name="name" required 
@@ -88,7 +101,9 @@
             </div>
             
             <div class="flex justify-end">
-                <button type="button" class="modal-close mr-4 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                <button type="button" 
+                        class="modal-close mr-4 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+                        _="on click add .hidden to #createPlanModal">
                     Cancel
                 </button>
                 <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
@@ -100,18 +115,27 @@
 </div>
 
 <!-- Join Plan Modal -->
-<div id="joinPlanModal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden">
+<div id="joinPlanModal" 
+     class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden"
+     _="on click if event.target.id == 'joinPlanModal' then add .hidden to me end">
     <div class="bg-white rounded-lg p-8 max-w-md w-full">
         <div class="flex justify-between items-center mb-6">
             <h3 class="text-xl font-bold">Join Existing Family Plan</h3>
-            <button class="modal-close text-gray-700 hover:text-gray-900">
+            <button class="modal-close text-gray-700 hover:text-gray-900"
+                    _="on click add .hidden to #joinPlanModal">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                 </svg>
             </button>
         </div>
         
-        <form action="/family-plans/join" method="post">
+        <form hx-post="/family-plans/join" 
+              hx-target="body"
+              _="on htmx:afterRequest 
+                  add .hidden to #joinPlanModal
+                  if event.detail.successful
+                    window.location.href = '/family-plans'
+                  end">
             <div class="mb-6">
                 <label for="joinCode" class="block text-gray-700 text-sm font-bold mb-2">Join Code</label>
                 <input type="text" id="joinCode" name="join_code" required 
@@ -120,7 +144,9 @@
             </div>
             
             <div class="flex justify-end">
-                <button type="button" class="modal-close mr-4 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                <button type="button" 
+                        class="modal-close mr-4 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+                        _="on click add .hidden to #joinPlanModal">
                     Cancel
                 </button>
                 <button type="submit" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
@@ -130,45 +156,4 @@
         </form>
     </div>
 </div>
-
-<script>
-    // Modal functionality
-    document.addEventListener('DOMContentLoaded', function() {
-        // Create plan modal
-        const createPlanBtn = document.getElementById('createPlanBtn');
-        const createPlanModal = document.getElementById('createPlanModal');
-        
-        // Join plan modal
-        const joinPlanBtn = document.getElementById('joinPlanBtn');
-        const joinPlanModal = document.getElementById('joinPlanModal');
-        
-        // Open create plan modal
-        createPlanBtn.addEventListener('click', function() {
-            createPlanModal.classList.remove('hidden');
-        });
-        
-        // Open join plan modal
-        joinPlanBtn.addEventListener('click', function() {
-            joinPlanModal.classList.remove('hidden');
-        });
-        
-        // Close modals
-        document.querySelectorAll('.modal-close').forEach(function(button) {
-            button.addEventListener('click', function() {
-                createPlanModal.classList.add('hidden');
-                joinPlanModal.classList.add('hidden');
-            });
-        });
-        
-        // Close modals when clicking outside
-        window.addEventListener('click', function(event) {
-            if (event.target === createPlanModal) {
-                createPlanModal.classList.add('hidden');
-            }
-            if (event.target === joinPlanModal) {
-                joinPlanModal.classList.add('hidden');
-            }
-        });
-    });
-</script>
 {{end}} 
