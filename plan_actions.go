@@ -318,10 +318,13 @@ func handleClaimPayment(app *pocketbase.PocketBase) echo.HandlerFunc {
 
 // Handler for approving a payment claim
 func handleApprovePayment(app *pocketbase.PocketBase) echo.HandlerFunc {
-	return func(c echo.Context) error {
-		session := c.Get("session").(SessionData)
-		joinCode := c.PathParam("join_code")
-		paymentId := c.PathParam("payment_id")
+    return func(c echo.Context) error {
+        session := c.Get("session").(SessionData)
+        joinCode := c.PathParam("join_code")
+        if err := c.Request().ParseForm(); err != nil {
+            return err
+        }
+        paymentId := c.FormValue("payment_id")
 
 		// Find the plan by join code
 		plansCollection, err := app.Dao().FindCollectionByNameOrId("family_plans")
