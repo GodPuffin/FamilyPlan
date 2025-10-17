@@ -1,42 +1,75 @@
 {{define "content"}}
 <div class="max-w-md mx-auto bg-white p-8 rounded-lg shadow-md">
-    <h2 class="text-2xl font-bold text-center mb-6">Register</h2>
-    
-    {{if .error}}
-    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4" role="alert">
-        <p>{{.error}}</p>
+  <h2 class="text-2xl font-bold text-center mb-6">Register</h2>
+
+  {{if .error}}
+  <div
+    class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4"
+    role="alert"
+  >
+    <p>{{.error}}</p>
+  </div>
+  {{end}}
+
+  <form action="/register" method="post">
+    <div class="mb-4">
+      <label for="username" class="block text-gray-700 text-sm font-bold mb-2"
+        >Username</label
+      >
+      <input
+        type="text"
+        id="username"
+        name="username"
+        required
+        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+      />
+      <p class="text-gray-600 text-xs italic mt-1">
+        Choose a unique username (3 characters minimum)
+      </p>
     </div>
-    {{end}}
-    
-    <form action="/register" method="post">
-        <div class="mb-4">
-            <label for="username" class="block text-gray-700 text-sm font-bold mb-2">Username</label>
-            <input type="text" id="username" name="username" required 
-                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-            <p class="text-gray-600 text-xs italic mt-1">Choose a unique username (3 characters minimum)</p>
-        </div>
-        
-        <div class="mb-4">
-            <label for="password" class="block text-gray-700 text-sm font-bold mb-2">Password</label>
-            <input type="password" id="password" name="password" required 
-                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-        </div>
-        
-        <div class="mb-6">
-            <label for="passwordConfirm" class="block text-gray-700 text-sm font-bold mb-2">Confirm Password</label>
-            <input type="password" id="passwordConfirm" name="passwordConfirm" required 
-                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-        </div>
-        
-        <div class="flex items-center justify-between">
-            <button type="submit" 
-                class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
-                Register
-            </button>
-            <a href="/login" class="inline-block align-baseline font-bold text-sm text-blue-500 hover:text-blue-800">
-                Already have an account?
-            </a>
-        </div>
-    </form>
+
+    <div class="mb-4">
+      <label for="password" class="block text-gray-700 text-sm font-bold mb-2"
+        >Password</label
+      >
+      <input
+        type="password"
+        id="password"
+        name="password"
+        required
+        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+      />
+    </div>
+
+    <div class="mb-6">
+      <label
+        for="passwordConfirm"
+        class="block text-gray-700 text-sm font-bold mb-2"
+        >Confirm Password</label
+      >
+      <input
+        type="password"
+        id="passwordConfirm"
+        name="passwordConfirm"
+        required
+        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+      />
+    </div>
+
+    <div class="flex items-center justify-between">
+      <button
+        type="submit"
+        class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+      >
+        Register
+      </button>
+      <a
+        href="/login"
+        class="inline-block align-baseline font-bold text-sm text-blue-500 hover:text-blue-800"
+      >
+        Already have an account?
+      </a>
+    </div>
+  </form>
 </div>
-{{end}} 
+{{end}}

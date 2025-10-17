@@ -1,159 +1,271 @@
 {{define "content"}}
 <div class="max-w-4xl mx-auto">
-    <div class="bg-white p-8 rounded-lg shadow-md">
-        <h2 class="text-2xl font-bold mb-6">My Family Plans</h2>
+  <div class="bg-white p-8 rounded-lg shadow-md">
+    <h2 class="text-2xl font-bold mb-6">My Family Plans</h2>
 
-        {{if .plans}}
-        <div class="mb-8 space-y-4">
-            {{range .plans}}
-            <div class="border rounded-lg p-6 hover:shadow-md transition-shadow">
-                <h3 class="text-xl font-bold text-gray-800">{{.Name}}</h3>
-                <p class="text-gray-600 mb-2">{{.Description}}</p>
-                <div class="flex justify-between items-center mt-4">
-                    <div class="flex flex-wrap gap-3">
-                        <div class="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm">
-                            ${{.Cost}}/month
-                        </div>
-                        <div class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
-                            {{if eq .MembersCount 1}}{{.MembersCount}} member{{else}}{{.MembersCount}} members{{end}}
-                        </div>
-                        {{if eq .Owner $.userId}}
-                        <div class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm">
-                            Owner
-                        </div>
-                        {{else}}
-                        <div class="{{if lt .Balance 0.0}}bg-red-100 text-red-800{{else if gt .Balance 0.0}}bg-green-100 text-green-800{{else}}bg-gray-100 text-gray-800{{end}} px-3 py-1 rounded-full text-sm">
-                            Balance: {{formatMoney .Balance}}
-                        </div>
-                        {{end}}
-                    </div>
-                    <a href="/{{.JoinCode}}" class="text-blue-500 hover:text-blue-700">View details</a>
-                </div>
+    {{if .plans}}
+    <div class="mb-8 space-y-4">
+      {{range .plans}}
+      <div class="border rounded-lg p-6 hover:shadow-md transition-shadow">
+        <h3 class="text-xl font-bold text-gray-800">{{.Name}}</h3>
+        <p class="text-gray-600 mb-2">{{.Description}}</p>
+        <div class="flex justify-between items-center mt-4">
+          <div class="flex flex-wrap gap-3">
+            <div
+              class="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm"
+            >
+              ${{.Cost}}/month
+            </div>
+            <div
+              class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm"
+            >
+              {{if eq .MembersCount 1}}{{.MembersCount}}
+              member{{else}}{{.MembersCount}} members{{end}}
+            </div>
+            {{if eq .Owner $.userId}}
+            <div
+              class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm"
+            >
+              Owner
+            </div>
+            {{else}}
+            <div
+              class="{{if lt .Balance 0.0}}bg-red-100 text-red-800{{else if gt .Balance 0.0}}bg-green-100 text-green-800{{else}}bg-gray-100 text-gray-800{{end}} px-3 py-1 rounded-full text-sm"
+            >
+              Balance: {{formatMoney .Balance}}
             </div>
             {{end}}
+          </div>
+          <a href="/{{.JoinCode}}" class="text-blue-500 hover:text-blue-700"
+            >View details</a
+          >
         </div>
-        {{else}}
-        <div class="mb-8 p-6 bg-gray-50 rounded-lg text-center">
-            <p class="text-gray-700">You don't have any family plans yet. Create a new one or join an existing plan!</p>
-        </div>
-        {{end}}
-
-        <div class="flex flex-col md:flex-row gap-4 justify-center mt-6">
-            <button id="createPlanBtn" 
-                    class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
-                    _="on click remove .hidden from #createPlanModal">
-                Create New Family Plan
-            </button>
-            <button id="joinPlanBtn" 
-                    class="bg-green-500 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
-                    _="on click remove .hidden from #joinPlanModal">
-                Join Existing Plan
-            </button>
-        </div>
+      </div>
+      {{end}}
     </div>
+    {{else}}
+    <div class="mb-8 p-6 bg-gray-50 rounded-lg text-center">
+      <p class="text-gray-700">
+        You don't have any family plans yet. Create a new one or join an
+        existing plan!
+      </p>
+    </div>
+    {{end}}
+
+    <div class="flex flex-col md:flex-row gap-4 justify-center mt-6">
+      <button
+        id="createPlanBtn"
+        class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+        _="on click remove .hidden from #createPlanModal"
+      >
+        Create New Family Plan
+      </button>
+      <button
+        id="joinPlanBtn"
+        class="bg-green-500 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+        _="on click remove .hidden from #joinPlanModal"
+      >
+        Join Existing Plan
+      </button>
+    </div>
+  </div>
 </div>
 
 <!-- Create Plan Modal -->
-<div id="createPlanModal" 
-     class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden"
-     _="on click if event.target.id == 'createPlanModal' then add .hidden to me end">
-    <div class="bg-white rounded-lg p-8 max-w-md w-full">
-        <div class="flex justify-between items-center mb-6">
-            <h3 class="text-xl font-bold">Create New Family Plan</h3>
-            <button class="modal-close text-gray-700 hover:text-gray-900"
-                    _="on click add .hidden to #createPlanModal">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
-            </button>
-        </div>
-        
-        <form hx-post="/family-plans/create" 
-              hx-target="body"
-              _="on htmx:afterRequest 
-                  add .hidden to #createPlanModal
-                  if event.detail.successful
-                    window.location.href = '/family-plans'
-                  end">
-            <div class="mb-4">
-                <label for="planName" class="block text-gray-700 text-sm font-bold mb-2">Plan Name</label>
-                <input type="text" id="planName" name="name" required 
-                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-            </div>
-            
-            <div class="mb-4">
-                <label for="planDescription" class="block text-gray-700 text-sm font-bold mb-2">Description</label>
-                <textarea id="planDescription" name="description" rows="3" 
-                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"></textarea>
-            </div>
-            
-            <div class="mb-4">
-                <label for="planCost" class="block text-gray-700 text-sm font-bold mb-2">Monthly Cost ($)</label>
-                <input type="number" id="planCost" name="cost" step="0.01" min="0" required 
-                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-            </div>
-            
-            <div class="mb-4">
-                <label for="individualCost" class="block text-gray-700 text-sm font-bold mb-2">Individual Subscription Cost ($)</label>
-                <input type="number" id="individualCost" name="individual_cost" step="0.01" min="0" required 
-                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                <p class="text-gray-600 text-xs italic mt-1">How much would each person pay if they had an individual subscription instead of a family plan?</p>
-            </div>
-            
-            <div class="flex justify-end">
-                <button type="button" 
-                        class="modal-close mr-4 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-                        _="on click add .hidden to #createPlanModal">
-                    Cancel
-                </button>
-                <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
-                    Create Plan
-                </button>
-            </div>
-        </form>
+<div
+  id="createPlanModal"
+  class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden"
+  _="on click if event.target.id == 'createPlanModal' then add .hidden to me end"
+>
+  <div class="bg-white rounded-lg p-8 max-w-md w-full">
+    <div class="flex justify-between items-center mb-6">
+      <h3 class="text-xl font-bold">Create New Family Plan</h3>
+      <button
+        class="modal-close text-gray-700 hover:text-gray-900"
+        _="on click add .hidden to #createPlanModal"
+      >
+        <svg
+          class="w-6 h-6"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M6 18L18 6M6 6l12 12"
+          ></path>
+        </svg>
+      </button>
     </div>
+
+    <form
+      hx-post="/family-plans/create"
+      hx-target="body"
+      _="on htmx:afterRequest
+         add .hidden to #createPlanModal
+         if event.detail.successful
+         window.location.href = '/family-plans'
+         end"
+    >
+      <div class="mb-4">
+        <label for="planName" class="block text-gray-700 text-sm font-bold mb-2"
+          >Plan Name</label
+        >
+        <input
+          type="text"
+          id="planName"
+          name="name"
+          required
+          class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+        />
+      </div>
+
+      <div class="mb-4">
+        <label
+          for="planDescription"
+          class="block text-gray-700 text-sm font-bold mb-2"
+          >Description</label
+        >
+        <textarea
+          id="planDescription"
+          name="description"
+          rows="3"
+          class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+        ></textarea>
+      </div>
+
+      <div class="mb-4">
+        <label for="planCost" class="block text-gray-700 text-sm font-bold mb-2"
+          >Monthly Cost ($)</label
+        >
+        <input
+          type="number"
+          id="planCost"
+          name="cost"
+          step="0.01"
+          min="0"
+          required
+          class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+        />
+        <p class="text-gray-600 text-xs italic mt-1">
+          What is the total monthly cost of the plan for the entire family?
+        </p>
+      </div>
+
+      <div class="mb-4">
+        <label
+          for="individualCost"
+          class="block text-gray-700 text-sm font-bold mb-2"
+          >Individual Subscription Cost ($)</label
+        >
+        <input
+          type="number"
+          id="individualCost"
+          name="individual_cost"
+          step="0.01"
+          min="0"
+          required
+          class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+        />
+        <p class="text-gray-600 text-xs italic mt-1">
+          How much would each person pay if they had an individual subscription
+          instead of a family plan?
+        </p>
+      </div>
+
+      <div class="flex justify-end">
+        <button
+          type="button"
+          class="modal-close mr-4 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+          _="on click add .hidden to #createPlanModal"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+        >
+          Create Plan
+        </button>
+      </div>
+    </form>
+  </div>
 </div>
 
 <!-- Join Plan Modal -->
-<div id="joinPlanModal" 
-     class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden"
-     _="on click if event.target.id == 'joinPlanModal' then add .hidden to me end">
-    <div class="bg-white rounded-lg p-8 max-w-md w-full">
-        <div class="flex justify-between items-center mb-6">
-            <h3 class="text-xl font-bold">Join Existing Family Plan</h3>
-            <button class="modal-close text-gray-700 hover:text-gray-900"
-                    _="on click add .hidden to #joinPlanModal">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
-            </button>
-        </div>
-        
-        <form hx-post="/family-plans/join" 
-              hx-target="body"
-              _="on htmx:afterRequest 
-                  add .hidden to #joinPlanModal
-                  if event.detail.successful
-                    window.location.href = '/family-plans'
-                  end">
-            <div class="mb-6">
-                <label for="joinCode" class="block text-gray-700 text-sm font-bold mb-2">Join Code</label>
-                <input type="text" id="joinCode" name="join_code" required 
-                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                <p class="text-gray-600 text-xs italic mt-1">Enter the 6-character code provided by the plan owner</p>
-            </div>
-            
-            <div class="flex justify-end">
-                <button type="button" 
-                        class="modal-close mr-4 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-                        _="on click add .hidden to #joinPlanModal">
-                    Cancel
-                </button>
-                <button type="submit" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
-                    Join Plan
-                </button>
-            </div>
-        </form>
+<div
+  id="joinPlanModal"
+  class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden"
+  _="on click if event.target.id == 'joinPlanModal' then add .hidden to me end"
+>
+  <div class="bg-white rounded-lg p-8 max-w-md w-full">
+    <div class="flex justify-between items-center mb-6">
+      <h3 class="text-xl font-bold">Join Existing Family Plan</h3>
+      <button
+        class="modal-close text-gray-700 hover:text-gray-900"
+        _="on click add .hidden to #joinPlanModal"
+      >
+        <svg
+          class="w-6 h-6"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M6 18L18 6M6 6l12 12"
+          ></path>
+        </svg>
+      </button>
     </div>
+
+    <form
+      hx-post="/family-plans/join"
+      hx-target="body"
+      _="on htmx:afterRequest
+         add .hidden to #joinPlanModal
+         if event.detail.successful
+         window.location.href = '/family-plans'
+         end"
+    >
+      <div class="mb-6">
+        <label for="joinCode" class="block text-gray-700 text-sm font-bold mb-2"
+          >Join Code</label
+        >
+        <input
+          type="text"
+          id="joinCode"
+          name="join_code"
+          required
+          class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+        />
+        <p class="text-gray-600 text-xs italic mt-1">
+          Enter the 6-character code provided by the plan owner
+        </p>
+      </div>
+
+      <div class="flex justify-end">
+        <button
+          type="button"
+          class="modal-close mr-4 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+          _="on click add .hidden to #joinPlanModal"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+        >
+          Join Plan
+        </button>
+      </div>
+    </form>
+  </div>
 </div>
-{{end}} 
+{{end}}

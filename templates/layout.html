@@ -1,14 +1,14 @@
 {{define "layout"}}
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{{.title}}</title>
     <!-- Favicon links -->
-    <link rel="icon" href="/favicon.ico" sizes="any">
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="/favicon.svg">
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
     <!-- HTMX -->
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <!-- Hyperscript -->
@@ -16,102 +16,141 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-        }
+      body {
+        font-family: "Inter", sans-serif;
+      }
     </style>
-</head>
-<body class="bg-gray-100 min-h-screen">
+  </head>
+  <body class="bg-gray-100 min-h-screen">
     <div class="container mx-auto px-4 py-8">
-        <header class="mb-8">
-            <h1 class="text-3xl font-bold text-gray-800">Family Plan Manager</h1>
-            <nav class="mt-4">
-                <ul class="flex space-x-4 items-center">
-                    {{if .isAuthenticated}}
-                        <li class="flex items-center">
-                            <span class="text-gray-600 mr-4">Signed in as: <span class="font-semibold">{{if .name}}{{.name}}{{else}}{{.username}}{{end}}</span></span>
-                            <button 
-                                id="openProfileModalBtn" 
-                                class="text-blue-600 hover:text-blue-800 mr-4"
-                                _="on click toggle .hidden on #profileModal">
-                                Edit Profile
-                            </button>
-                            <a href="/logout" class="text-red-600 hover:text-red-800">Logout</a>
-                        </li>
-                    {{end}}
-                </ul>
-            </nav>
-        </header>
-        
-        <main>
-            {{template "content" .}}
-        </main>
-        
-        <footer class="mt-12 pt-4 border-t border-gray-200 text-center text-gray-500">
-            <p>Made by <a href="https://github.com/GodPuffin" class="hover:text-gray-700">Marcus</a> 🤓</p>
-        </footer>
+      <header class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-800">Family Plan Manager</h1>
+        <nav class="mt-4">
+          <ul class="flex space-x-4 items-center">
+            {{if .isAuthenticated}}
+            <li class="flex items-center">
+              <span class="text-gray-600 mr-4"
+                >Signed in as:
+                <span class="font-semibold"
+                  >{{if .name}}{{.name}}{{else}}{{.username}}{{end}}</span
+                ></span
+              >
+              <button
+                id="openProfileModalBtn"
+                class="text-blue-600 hover:text-blue-800 mr-4"
+                _="on click toggle .hidden on #profileModal"
+              >
+                Edit Profile
+              </button>
+              <a href="/logout" class="text-red-600 hover:text-red-800"
+                >Logout</a
+              >
+            </li>
+            {{end}}
+          </ul>
+        </nav>
+      </header>
+
+      <main>{{template "content" .}}</main>
+
+      <footer
+        class="mt-12 pt-4 border-t border-gray-200 text-center text-gray-500"
+      >
+        <p>
+          Made by
+          <a href="https://github.com/GodPuffin" class="hover:text-gray-700"
+            >Marcus</a
+          >
+          🤓
+        </p>
+      </footer>
     </div>
 
     {{if .isAuthenticated}}
     <!-- Profile Edit Modal -->
-    <div id="profileModal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden"
-         _="on click if event.target.id == 'profileModal' then add .hidden to me end">
-        <div class="bg-white rounded-lg p-8 max-w-md w-full">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="text-xl font-bold">Edit Profile</h3>
-                <button id="closeProfileModalBtn" class="text-gray-500 hover:text-gray-700"
-                        _="on click add .hidden to #profileModal">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
+    <div
+      id="profileModal"
+      class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden"
+      _="on click if event.target.id == 'profileModal' then add .hidden to me end"
+    >
+      <div class="bg-white rounded-lg p-8 max-w-md w-full">
+        <div class="flex justify-between items-center mb-6">
+          <h3 class="text-xl font-bold">Edit Profile</h3>
+          <button
+            id="closeProfileModalBtn"
+            class="text-gray-500 hover:text-gray-700"
+            _="on click add .hidden to #profileModal"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+
+        <div id="profileModalContent">
+          {{if .profileError}}
+          <div class="mb-4 p-3 bg-red-100 text-red-700 rounded">
+            {{.profileError}}
+          </div>
+          {{end}} {{if .profileSuccess}}
+          <div class="mb-4 p-3 bg-green-100 text-green-700 rounded">
+            {{.profileSuccess}}
+          </div>
+          {{end}}
+
+          <form
+            id="profileForm"
+            hx-post="/profile"
+            hx-swap="none"
+            _="on htmx:afterRequest
+               add .hidden to #profileModal
+               window.location.reload()
+               end"
+            class="space-y-4"
+          >
+            <div>
+              <label
+                for="name"
+                class="block text-sm font-medium text-gray-700 mb-1"
+                >Display Name</label
+              >
+              <input
+                type="text"
+                id="name"
+                name="name"
+                value="{{.name}}"
+                placeholder="Enter your display name"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <p class="text-sm text-gray-500 mt-1">
+                Leave blank to use your username
+              </p>
             </div>
 
-            <div id="profileModalContent">
-                {{if .profileError}}
-                <div class="mb-4 p-3 bg-red-100 text-red-700 rounded">
-                    {{.profileError}}
-                </div>
-                {{end}}
-                
-                {{if .profileSuccess}}
-                <div class="mb-4 p-3 bg-green-100 text-green-700 rounded">
-                    {{.profileSuccess}}
-                </div>
-                {{end}}
-                
-                <form id="profileForm" 
-                      hx-post="/profile" 
-                      hx-swap="none"
-                      _="on htmx:afterRequest
-                          add .hidden to #profileModal
-                          window.location.reload()
-                          end"
-                      class="space-y-4">
-                    <div>
-                        <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Display Name</label>
-                        <input 
-                            type="text" 
-                            id="name" 
-                            name="name" 
-                            value="{{.name}}"
-                            placeholder="Enter your display name"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                        <p class="text-sm text-gray-500 mt-1">Leave blank to use your username</p>
-                    </div>
-                    
-                    <div class="pt-2">
-                        <button type="submit" 
-                                class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
-                            Save Changes
-                        </button>
-                    </div>
-                </form>
+            <div class="pt-2">
+              <button
+                type="submit"
+                class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              >
+                Save Changes
+              </button>
             </div>
+          </form>
         </div>
+      </div>
     </div>
     {{end}}
-</body>
+  </body>
 </html>
-{{end}} 
+{{end}}
