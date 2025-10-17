@@ -91,38 +91,38 @@
           id="shareBtn"
           class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm font-medium transition-colors flex items-center gap-1"
           title="Share plan status"
-          _="on click
-            set shareText to '🏠 ' + '{{.plan.Name}}' + '\n'
-            set shareText to shareText + '💰 ${{.plan.Cost}}/month · {{.total_members}} members\n'
-            set shareText to shareText + '━━━━━━━━━━━━━━━━\n'
+          _='on click
+            set shareText to "🏠 " + "{{.plan.Name}}" + "\n"
+            set shareText to shareText + "💰 ${{.plan.Cost}}/month · {{.total_members}} members\n"
+            set shareText to shareText + "━━━━━━━━━━━━━━━━\n"
             {{range .members}}
             {{if eq .Id $.plan.Owner}}
-            set shareText to shareText + '👑 '
+            set shareText to shareText + "👑 "
             {{else if lt .Balance 0.0}}
-            set shareText to shareText + '🔴 '
+            set shareText to shareText + "🔴 "
             {{else if gt .Balance 0.0}}
-            set shareText to shareText + '💚 '
+            set shareText to shareText + "💚 "
             {{else}}
-            set shareText to shareText + '⚪ '
+            set shareText to shareText + "⚪ "
             {{end}}
             {{if .Name}}
-            set shareText to shareText + '{{.Name}}'
+            set shareText to shareText + "{{.Name}}"
             {{else}}
-            set shareText to shareText + '{{.Username}}'
+            set shareText to shareText + "{{.Username}}"
             {{end}}
             {{if ne .Id $.plan.Owner}}
             {{if lt .Balance 0.0}}
-            set shareText to shareText + ' (owes {{formatMoney (mul .Balance -1.0)}})'
+            set shareText to shareText + " (owes {{formatMoney (mul .Balance -1.0)}})"
             {{else if gt .Balance 0.0}}
-            set shareText to shareText + ' (+{{formatMoney .Balance}})'
+            set shareText to shareText + " (+{{formatMoney .Balance}})"
             {{end}}
             {{end}}
-            set shareText to shareText + '\n'
+            set shareText to shareText + "\n"
             {{end}}
-            set shareText to shareText + '━━━━━━━━━━━━━━━━\n'
-            set shareText to shareText + '💾 Saved: {{formatMoney .total_savings}} total\n'
-            set shareText to shareText + '📅 {{.plan_age_days}} days old\n'
-            set shareText to shareText + '\nfamilyplanmanager.xyz'
+            set shareText to shareText + "━━━━━━━━━━━━━━━━\n"
+            set shareText to shareText + "💾 Saved: {{formatMoney .total_savings}} total\n"
+            set shareText to shareText + "📅 {{.plan_age_days}} days old\n"
+            set shareText to shareText + "\nfamilyplanmanager.xyz"
             call navigator.clipboard.writeText(shareText)
             remove .hidden from #shareFeedback
             add .opacity-100 to #shareFeedback
@@ -131,7 +131,7 @@
             add .opacity-0 to #shareFeedback
             remove .opacity-100 from #shareFeedback
             wait 300ms
-            add .hidden to #shareFeedback"
+            add .hidden to #shareFeedback'
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
