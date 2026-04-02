@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"familyplan/src/internal/domain"
+	"familyplan/src/internal/http/sessionutil"
 	"familyplan/src/internal/support/random"
 	"familyplan/src/internal/view"
 
@@ -16,8 +16,7 @@ import (
 // HandleRegisterPage renders the registration page.
 func HandleRegisterPage() echo.HandlerFunc {
 	return func(c echo.Context) error {
-		session := c.Get("session").(domain.SessionData)
-		if session.IsAuthenticated {
+		if session, ok := sessionutil.Current(c); ok && session.IsAuthenticated {
 			return c.Redirect(http.StatusSeeOther, "/family-plans")
 		}
 

@@ -53,7 +53,8 @@ func FindMembership(app *pocketbase.PocketBase, planID, userID string) (*pbmodel
 
 	return app.Dao().FindFirstRecordByFilter(
 		membershipsCollection.Id,
-		filter,
+		filter.Expression,
+		filter.Params,
 	)
 }
 
@@ -74,6 +75,7 @@ func FindJoinRequest(app *pocketbase.PocketBase, planID, userID string) (*pbmode
 
 	return app.Dao().FindFirstRecordByFilter(
 		joinRequestsCollection.Id,
-		filter,
+		filter.Expression,
+		filter.Params,
 	)
 }

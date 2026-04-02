@@ -25,10 +25,11 @@ func GetActiveMembershipsForMonth(app *pocketbase.PocketBase, planID string, tar
 
 	allMemberships, err := app.Dao().FindRecordsByFilter(
 		membershipsCollection.Id,
-		filter,
+		filter.Expression,
 		"",
 		-1,
 		0,
+		filter.Params,
 	)
 	if err != nil {
 		return nil, err

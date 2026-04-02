@@ -14,7 +14,10 @@ import (
 // HandleFamilyPlansList renders the current user's plans.
 func HandleFamilyPlansList(app *pocketbase.PocketBase) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		session := c.Get("session").(domain.SessionData)
+		session, err := sessionOrRedirect(c)
+		if err != nil {
+			return err
+		}
 
 		plansCollection, err := app.Dao().FindCollectionByNameOrId("family_plans")
 		if err != nil {
@@ -28,10 +31,11 @@ func HandleFamilyPlansList(app *pocketbase.PocketBase) echo.HandlerFunc {
 
 		ownedPlanRecords, err := app.Dao().FindRecordsByFilter(
 			plansCollection.Id,
-			ownerFilter,
+			ownerFilter.Expression,
 			"",
 			-1,
 			0,
+			ownerFilter.Params,
 		)
 		if err != nil {
 			return err
@@ -51,10 +55,11 @@ func HandleFamilyPlansList(app *pocketbase.PocketBase) echo.HandlerFunc {
 
 		memberships, err := app.Dao().FindRecordsByFilter(
 			membershipsCollection.Id,
-			membershipFilter,
+			membershipFilter.Expression,
 			"",
 			-1,
 			0,
+			membershipFilter.Params,
 		)
 		if err != nil {
 			return err
@@ -92,10 +97,11 @@ func HandleFamilyPlansList(app *pocketbase.PocketBase) echo.HandlerFunc {
 
 			membershipRecords, err := app.Dao().FindRecordsByFilter(
 				membershipsCollection.Id,
-				planMembershipFilter,
+				planMembershipFilter.Expression,
 				"",
 				-1,
 				0,
+				planMembershipFilter.Params,
 			)
 
 			membersCount := 0

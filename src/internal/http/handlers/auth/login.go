@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"familyplan/src/internal/domain"
+	"familyplan/src/internal/http/sessionutil"
 	"familyplan/src/internal/support/random"
 	"familyplan/src/internal/view"
 
@@ -15,8 +15,7 @@ import (
 // HandleLoginPage renders the login page.
 func HandleLoginPage() echo.HandlerFunc {
 	return func(c echo.Context) error {
-		session := c.Get("session").(domain.SessionData)
-		if session.IsAuthenticated {
+		if session, ok := sessionutil.Current(c); ok && session.IsAuthenticated {
 			return c.Redirect(http.StatusSeeOther, "/family-plans")
 		}
 
@@ -40,20 +39,11 @@ func HandleLoginSubmit(app *pocketbase.PocketBase) echo.HandlerFunc {
 
 		authRecord, err := app.Dao().FindAuthRecordByUsername(authCollection.Id, username)
 		if err != nil {
-			return c.Redirect(http.StatusSeeOther, "/login?error=Invalid+username+or+password")
-		}
-
-		if !authRecord.Verified() {
-			if err := authRecord.SetVerified(true); err != nil {
-				return c.Redirect(http.StatusSeeOther, "/login?error=Account+verification+failed")
-			}
-			if err := app.Dao().SaveRecord(authRecord); err != nil {
-				return c.Redirect(http.StatusSeeOther, "/login?error=Account+verification+failed")
-			}
+			return c.Redirect(http.StatusSeeOther, "/login?error=Invalid+credentials")
 		}
 
 		if !authRecord.ValidatePassword(password) {
-			return c.Redirect(http.StatusSeeOther, "/login?error=Invalid+password")
+			return c.Redirect(http.StatusSeeOther, "/login?error=Invalid+credentials")
 		}
 
 		token, err := random.GenerateToken()

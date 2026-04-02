@@ -3,9 +3,8 @@ package plans
 import (
 	"errors"
 	"net/http"
-	"strconv"
 
-	"familyplan/src/internal/domain"
+	"familyplan/src/internal/money"
 	"familyplan/src/internal/support/random"
 
 	"github.com/labstack/echo/v5"
@@ -17,7 +16,10 @@ import (
 // HandleCreateFamilyPlan creates a new family plan and owner membership.
 func HandleCreateFamilyPlan(app *pocketbase.PocketBase) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		session := c.Get("session").(domain.SessionData)
+		session, err := sessionOrRedirect(c)
+		if err != nil {
+			return err
+		}
 
 		name := c.FormValue("name")
 		description := c.FormValue("description")
@@ -28,18 +30,18 @@ func HandleCreateFamilyPlan(app *pocketbase.PocketBase) echo.HandlerFunc {
 			return c.Redirect(http.StatusSeeOther, "/family-plans")
 		}
 
-		cost, err := strconv.ParseFloat(costStr, 64)
+		cost, err := money.ParseAmount(costStr)
 		if err != nil {
 			return c.Redirect(http.StatusSeeOther, "/family-plans")
 		}
 
-		individualCost, err := strconv.ParseFloat(individualCostStr, 64)
+		individualCost, err := money.ParseAmount(individualCostStr)
 		if err != nil {
 			return c.Redirect(http.StatusSeeOther, "/family-plans")
 		}
 
-		joinCode := random.GenerateJoinCode(6)
-		if joinCode == "" {
+		joinCode, err := random.GenerateJoinCode(6)
+		if err != nil {
 			return errors.New("failed to generate join code")
 		}
 

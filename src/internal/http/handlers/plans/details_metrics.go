@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"familyplan/src/internal/billing"
+	"familyplan/src/internal/money"
 	"familyplan/src/internal/planutil"
 
 	"github.com/pocketbase/pocketbase"
@@ -26,27 +27,28 @@ func calculateTotalPayments(app *pocketbase.PocketBase, planID string) float64 {
 
 	approvedPayments, err := app.Dao().FindRecordsByFilter(
 		paymentsCollection.Id,
-		filter,
+		filter.Expression,
 		"",
 		-1,
 		0,
+		filter.Params,
 	)
 	if err != nil {
 		return 0
 	}
 
-	totalPayments := 0.0
+	totalPaymentsCents := int64(0)
 	for _, payment := range approvedPayments {
-		totalPayments += payment.GetFloat("amount")
+		totalPaymentsCents += money.ToCents(payment.GetFloat("amount"))
 	}
 
-	return totalPayments
+	return money.FromCents(totalPaymentsCents)
 }
 
 func calculateTotalSavings(app *pocketbase.PocketBase, plan *pbmodels.Record) float64 {
-	totalSavings := 0.0
-	individualCost := plan.GetFloat("individual_cost")
-	familyPlanCost := plan.GetFloat("cost")
+	totalSavingsCents := int64(0)
+	individualCostCents := money.ToCents(plan.GetFloat("individual_cost"))
+	familyPlanCostCents := money.ToCents(plan.GetFloat("cost"))
 
 	planCreationTime := plan.GetDateTime("created").Time()
 	currentTime := time.Now()
@@ -72,13 +74,13 @@ func calculateTotalSavings(app *pocketbase.PocketBase, plan *pbmodels.Record) fl
 			continue
 		}
 
-		monthlySavings := (individualCost * float64(memberCount)) - familyPlanCost
-		if monthlySavings > 0 {
-			totalSavings += monthlySavings
+		monthlySavingsCents := (individualCostCents * int64(memberCount)) - familyPlanCostCents
+		if monthlySavingsCents > 0 {
+			totalSavingsCents += monthlySavingsCents
 		}
 	}
 
-	return totalSavings
+	return money.FromCents(totalSavingsCents)
 }
 
 func calculatePlanAgeDays(plan *pbmodels.Record) int {

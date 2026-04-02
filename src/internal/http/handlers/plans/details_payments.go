@@ -36,10 +36,11 @@ func loadUserPayments(app *pocketbase.PocketBase, planID, userID string) ([]doma
 
 	paymentRecords, err := app.Dao().FindRecordsByFilter(
 		paymentsCollection.Id,
-		filter,
+		filter.Expression,
 		"-created",
 		20,
 		0,
+		filter.Params,
 	)
 	if err != nil {
 		return nil, err
@@ -66,10 +67,11 @@ func loadPaymentsByTerms(app *pocketbase.PocketBase, planID string, terms ...pla
 
 	paymentRecords, err := app.Dao().FindRecordsByFilter(
 		paymentsCollection.Id,
-		filter,
+		filter.Expression,
 		"-created",
 		-1,
 		0,
+		filter.Params,
 	)
 	if err != nil {
 		return nil, err
@@ -97,7 +99,7 @@ func paymentIdentity(app *pocketbase.PocketBase, planID, userID string) (string,
 	filter, err := planutil.BuildEqualsFilter(
 		planutil.FilterTerm{Field: "plan_id", Value: planID},
 		planutil.FilterTerm{Field: "user_id", Value: userID},
-		planutil.FilterTerm{Field: "is_artificial", Value: "true", Literal: true},
+		planutil.FilterTerm{Field: "is_artificial", Value: true},
 	)
 	if err != nil {
 		return "", "", err
@@ -105,7 +107,8 @@ func paymentIdentity(app *pocketbase.PocketBase, planID, userID string) (string,
 
 	artificialMembership, _ := app.Dao().FindFirstRecordByFilter(
 		membershipsCollection.Id,
-		filter,
+		filter.Expression,
+		filter.Params,
 	)
 	if artificialMembership != nil {
 		return "", artificialMembership.GetString("name"), nil

@@ -3,18 +3,15 @@ package random
 import (
 	crand "crypto/rand"
 	"math/big"
+
+	"github.com/google/uuid"
 )
 
 // GenerateJoinCode creates a random plan join code.
-func GenerateJoinCode(length int) string {
+func GenerateJoinCode(length int) (string, error) {
 	const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
-	code, err := secureString(length, charset)
-	if err != nil {
-		return ""
-	}
-
-	return code
+	return secureString(length, charset)
 }
 
 // GenerateToken creates a random auth token.
@@ -25,6 +22,11 @@ func GenerateToken() (string, error) {
 	)
 
 	return secureString(tokenLength, charset)
+}
+
+// GenerateUUID creates a random UUID string.
+func GenerateUUID() (string, error) {
+	return uuid.NewString(), nil
 }
 
 func secureString(length int, charset string) (string, error) {

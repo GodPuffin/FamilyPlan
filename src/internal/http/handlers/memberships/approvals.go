@@ -3,7 +3,6 @@ package memberships
 import (
 	"net/http"
 
-	"familyplan/src/internal/domain"
 	"familyplan/src/internal/planutil"
 
 	"github.com/labstack/echo/v5"
@@ -15,7 +14,10 @@ import (
 // HandleApproveRequest approves a pending join request.
 func HandleApproveRequest(app *pocketbase.PocketBase) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		session := c.Get("session").(domain.SessionData)
+		session, err := sessionOrRedirect(c)
+		if err != nil {
+			return err
+		}
 		joinCode := c.PathParam("join_code")
 		userID := c.FormValue("user_id")
 
@@ -49,7 +51,8 @@ func HandleApproveRequest(app *pocketbase.PocketBase) echo.HandlerFunc {
 
 			existingMembership, _ := txDao.FindFirstRecordByFilter(
 				membershipsCollection.Id,
-				membershipFilter,
+				membershipFilter.Expression,
+				membershipFilter.Params,
 			)
 			if existingMembership == nil {
 				newMembership := pbmodels.NewRecord(membershipsCollection)
@@ -74,7 +77,10 @@ func HandleApproveRequest(app *pocketbase.PocketBase) echo.HandlerFunc {
 // HandleDenyRequest denies a pending join request.
 func HandleDenyRequest(app *pocketbase.PocketBase) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		session := c.Get("session").(domain.SessionData)
+		session, err := sessionOrRedirect(c)
+		if err != nil {
+			return err
+		}
 		joinCode := c.PathParam("join_code")
 		userID := c.FormValue("user_id")
 

@@ -3,7 +3,6 @@ package plans
 import (
 	"net/http"
 
-	"familyplan/src/internal/domain"
 	"familyplan/src/internal/planutil"
 
 	"github.com/labstack/echo/v5"
@@ -14,7 +13,10 @@ import (
 // HandleJoinPlan creates a join request for an existing plan.
 func HandleJoinPlan(app *pocketbase.PocketBase) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		session := c.Get("session").(domain.SessionData)
+		session, err := sessionOrRedirect(c)
+		if err != nil {
+			return err
+		}
 		joinCode := c.FormValue("join_code")
 		if joinCode == "" {
 			return c.Redirect(http.StatusSeeOther, "/family-plans")

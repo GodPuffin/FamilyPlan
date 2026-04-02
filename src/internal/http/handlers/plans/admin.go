@@ -3,9 +3,8 @@ package plans
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 
-	"familyplan/src/internal/domain"
+	"familyplan/src/internal/money"
 	"familyplan/src/internal/planutil"
 
 	"github.com/labstack/echo/v5"
@@ -16,7 +15,10 @@ import (
 // HandleDeletePlan deletes a plan and its related records.
 func HandleDeletePlan(app *pocketbase.PocketBase) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		session := c.Get("session").(domain.SessionData)
+		session, err := sessionOrRedirect(c)
+		if err != nil {
+			return err
+		}
 		joinCode := c.PathParam("join_code")
 
 		planRecord, err := planutil.FindPlanByJoinCode(app, joinCode)
@@ -43,10 +45,11 @@ func HandleDeletePlan(app *pocketbase.PocketBase) echo.HandlerFunc {
 
 			memberships, err := txDao.FindRecordsByFilter(
 				membershipsCollection.Id,
-				membershipFilter,
+				membershipFilter.Expression,
 				"",
 				-1,
 				0,
+				membershipFilter.Params,
 			)
 			if err == nil {
 				for _, membership := range memberships {
@@ -70,10 +73,11 @@ func HandleDeletePlan(app *pocketbase.PocketBase) echo.HandlerFunc {
 
 			joinRequests, err := txDao.FindRecordsByFilter(
 				joinRequestsCollection.Id,
-				joinRequestFilter,
+				joinRequestFilter.Expression,
 				"",
 				-1,
 				0,
+				joinRequestFilter.Params,
 			)
 			if err == nil {
 				for _, request := range joinRequests {
@@ -97,10 +101,11 @@ func HandleDeletePlan(app *pocketbase.PocketBase) echo.HandlerFunc {
 
 			payments, err := txDao.FindRecordsByFilter(
 				paymentsCollection.Id,
-				paymentsFilter,
+				paymentsFilter.Expression,
 				"",
 				-1,
 				0,
+				paymentsFilter.Params,
 			)
 			if err == nil {
 				for _, payment := range payments {
@@ -123,7 +128,10 @@ func HandleDeletePlan(app *pocketbase.PocketBase) echo.HandlerFunc {
 // HandleUpdatePlan updates editable plan fields.
 func HandleUpdatePlan(app *pocketbase.PocketBase) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		session := c.Get("session").(domain.SessionData)
+		session, err := sessionOrRedirect(c)
+		if err != nil {
+			return err
+		}
 		joinCode := c.PathParam("join_code")
 
 		planRecord, err := planutil.FindPlanByJoinCode(app, joinCode)
@@ -140,14 +148,14 @@ func HandleUpdatePlan(app *pocketbase.PocketBase) echo.HandlerFunc {
 		costStr := c.FormValue("cost")
 		individualCostStr := c.FormValue("individual_cost")
 
-		cost, err := strconv.ParseFloat(costStr, 64)
+		cost, err := money.ParseAmount(costStr)
 		if err != nil {
-			cost = planRecord.GetFloat("cost")
+			cost = money.Normalize(planRecord.GetFloat("cost"))
 		}
 
-		individualCost, err := strconv.ParseFloat(individualCostStr, 64)
+		individualCost, err := money.ParseAmount(individualCostStr)
 		if err != nil {
-			individualCost = planRecord.GetFloat("individual_cost")
+			individualCost = money.Normalize(planRecord.GetFloat("individual_cost"))
 		}
 
 		planRecord.Set("name", name)

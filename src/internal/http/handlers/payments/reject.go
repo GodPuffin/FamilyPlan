@@ -3,7 +3,6 @@ package payments
 import (
 	"net/http"
 
-	"familyplan/src/internal/domain"
 	"familyplan/src/internal/planutil"
 
 	"github.com/labstack/echo/v5"
@@ -13,7 +12,10 @@ import (
 // HandleRejectPayment rejects a pending payment.
 func HandleRejectPayment(app *pocketbase.PocketBase) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		session := c.Get("session").(domain.SessionData)
+		session, err := sessionOrRedirect(c)
+		if err != nil {
+			return err
+		}
 		joinCode := c.PathParam("join_code")
 
 		planRecord, err := planutil.FindPlanByJoinCode(app, joinCode)
@@ -23,10 +25,6 @@ func HandleRejectPayment(app *pocketbase.PocketBase) echo.HandlerFunc {
 
 		if !planutil.IsOwner(planRecord, session.UserID) {
 			return c.Redirect(http.StatusSeeOther, "/"+joinCode)
-		}
-
-		if err := c.Request().ParseForm(); err != nil {
-			return err
 		}
 
 		paymentID := c.FormValue("payment_id")

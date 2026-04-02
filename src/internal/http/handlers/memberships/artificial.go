@@ -1,10 +1,8 @@
 package memberships
 
 import (
-	"fmt"
 	"net/http"
 
-	"familyplan/src/internal/domain"
 	"familyplan/src/internal/planutil"
 	"familyplan/src/internal/support/random"
 
@@ -16,7 +14,10 @@ import (
 // HandleAddArtificialMember creates an artificial member record.
 func HandleAddArtificialMember(app *pocketbase.PocketBase) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		session := c.Get("session").(domain.SessionData)
+		session, err := sessionOrRedirect(c)
+		if err != nil {
+			return err
+		}
 		joinCode := c.PathParam("join_code")
 		memberName := c.FormValue("name")
 
@@ -38,12 +39,10 @@ func HandleAddArtificialMember(app *pocketbase.PocketBase) echo.HandlerFunc {
 			return err
 		}
 
-		token, err := random.GenerateToken()
+		artificialUserID, err := random.GenerateUUID()
 		if err != nil {
 			return err
 		}
-
-		artificialUserID := fmt.Sprintf("artificial_%s_%s", planRecord.Id, token)
 
 		newMembership := pbmodels.NewRecord(membershipsCollection)
 		newMembership.Set("plan_id", planRecord.Id)

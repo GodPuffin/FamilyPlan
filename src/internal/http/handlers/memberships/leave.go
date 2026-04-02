@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"familyplan/src/internal/billing"
-	"familyplan/src/internal/domain"
 	"familyplan/src/internal/planutil"
 
 	"github.com/labstack/echo/v5"
@@ -15,7 +14,10 @@ import (
 // HandleLeavePlan either leaves immediately or marks leave_requested.
 func HandleLeavePlan(app *pocketbase.PocketBase) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		session := c.Get("session").(domain.SessionData)
+		session, err := sessionOrRedirect(c)
+		if err != nil {
+			return err
+		}
 		joinCode := c.PathParam("join_code")
 
 		planRecord, err := planutil.FindPlanByJoinCode(app, joinCode)

@@ -2,11 +2,10 @@ package payments
 
 import (
 	"net/http"
-	"strconv"
 	"time"
 
 	"familyplan/src/internal/billing"
-	"familyplan/src/internal/domain"
+	"familyplan/src/internal/money"
 	"familyplan/src/internal/planutil"
 
 	"github.com/labstack/echo/v5"
@@ -17,7 +16,10 @@ import (
 // HandleAddManualPayment adds an owner-entered approved payment.
 func HandleAddManualPayment(app *pocketbase.PocketBase) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		session := c.Get("session").(domain.SessionData)
+		session, err := sessionOrRedirect(c)
+		if err != nil {
+			return err
+		}
 		joinCode := c.PathParam("join_code")
 		userID := c.FormValue("user_id")
 
@@ -35,7 +37,7 @@ func HandleAddManualPayment(app *pocketbase.PocketBase) echo.HandlerFunc {
 			return c.Redirect(http.StatusSeeOther, "/"+joinCode)
 		}
 
-		amount, err := strconv.ParseFloat(c.FormValue("amount"), 64)
+		amount, err := money.ParseAmount(c.FormValue("amount"))
 		if err != nil || amount <= 0 {
 			return c.Redirect(http.StatusSeeOther, "/"+joinCode)
 		}

@@ -2,8 +2,10 @@ package billing
 
 import (
 	"fmt"
+	"sort"
 	"time"
 
+	"familyplan/src/internal/money"
 	"familyplan/src/internal/planutil"
 
 	"github.com/pocketbase/pocketbase"
@@ -21,7 +23,7 @@ func CalculateMemberBalance(app *pocketbase.PocketBase, planID, userID string) (
 		return 0, err
 	}
 
-	monthlyCost := plan.GetFloat("cost")
+	monthlyCostCents := money.ToCents(plan.GetFloat("cost"))
 
 	membership, err := planutil.FindMembership(app, planID, userID)
 	if err != nil || membership == nil {
@@ -44,26 +46,27 @@ func CalculateMemberBalance(app *pocketbase.PocketBase, planID, userID string) (
 
 	userPayments, err := app.Dao().FindRecordsByFilter(
 		paymentsCollection.Id,
-		filter,
+		filter.Expression,
 		"",
 		-1,
 		0,
+		filter.Params,
 	)
 	if err != nil {
 		return 0, err
 	}
 
-	totalPaid := 0.0
-	paymentsByMonth := make(map[string]float64)
+	totalPaidCents := int64(0)
+	paymentsByMonth := make(map[string]int64)
 
 	for _, payment := range userPayments {
-		amount := payment.GetFloat("amount")
-		totalPaid += amount
+		amountCents := money.ToCents(payment.GetFloat("amount"))
+		totalPaidCents += amountCents
 
 		forMonth := payment.GetDateTime("for_month")
 		if !forMonth.IsZero() {
 			monthKey := forMonth.Time().Format("2006-01")
-			paymentsByMonth[monthKey] += amount
+			paymentsByMonth[monthKey] += amountCents
 		}
 	}
 
@@ -111,7 +114,7 @@ func CalculateMemberBalance(app *pocketbase.PocketBase, planID, userID string) (
 		)
 	}
 
-	amountDue := 0.0
+	amountDueCents := int64(0)
 	currentMonth := startMonth
 
 	for !currentMonth.After(endMonth) {
@@ -119,45 +122,62 @@ func CalculateMemberBalance(app *pocketbase.PocketBase, planID, userID string) (
 
 		activeMemberships, err := GetActiveMembershipsForMonth(app, planID, currentMonth)
 		if err == nil {
-			memberCount := 0
+			memberIDs := make([]string, 0, len(activeMemberships)+1)
 			ownerIncluded := false
 			ownerID := planutil.OwnerID(plan)
 
 			for _, activeMembership := range activeMemberships {
-				if activeMembership.GetString("user_id") == ownerID {
+				memberID := activeMembership.GetString("user_id")
+				if memberID == ownerID {
 					ownerIncluded = true
 				}
-				memberCount++
+				memberIDs = append(memberIDs, memberID)
 			}
 
 			if !ownerIncluded {
-				memberCount++
+				memberIDs = append(memberIDs, ownerID)
 			}
 
-			if memberCount > 0 {
-				monthlyShare := monthlyCost / float64(memberCount)
-				amountDue += monthlyShare
+			if len(memberIDs) > 0 {
+				amountDueCents += memberShareCents(monthlyCostCents, memberIDs, userID)
 			}
 		}
 
 		if paidAmount, exists := paymentsByMonth[monthKey]; exists {
-			amountDue -= paidAmount
-			totalPaid -= paidAmount
+			amountDueCents -= paidAmount
+			totalPaidCents -= paidAmount
 		}
 
-		currentMonth = time.Date(
-			currentMonth.Year(),
-			currentMonth.Month()+1,
-			1,
-			0,
-			0,
-			0,
-			0,
-			currentMonth.Location(),
-		)
+		currentMonth = currentMonth.AddDate(0, 1, 0)
 	}
 
-	return totalPaid - amountDue, nil
+	return money.FromCents(totalPaidCents - amountDueCents), nil
+}
+
+func memberShareCents(totalCents int64, memberIDs []string, userID string) int64 {
+	if len(memberIDs) == 0 {
+		return 0
+	}
+
+	sortedIDs := append([]string(nil), memberIDs...)
+	sort.Strings(sortedIDs)
+
+	baseShare := totalCents / int64(len(sortedIDs))
+	remainder := totalCents % int64(len(sortedIDs))
+
+	for i, memberID := range sortedIDs {
+		if memberID != userID {
+			continue
+		}
+
+		if int64(i) < remainder {
+			return baseShare + 1
+		}
+
+		return baseShare
+	}
+
+	return 0
 }
 
 // EndMembershipIfSettled ends a leave-requested membership once its balance is settled.

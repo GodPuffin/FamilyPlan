@@ -1,9 +1,9 @@
 package memberships
 
 import (
+	"errors"
 	"net/http"
 
-	"familyplan/src/internal/domain"
 	"familyplan/src/internal/planutil"
 
 	"github.com/labstack/echo/v5"
@@ -15,7 +15,10 @@ import (
 // HandleTransferMembership converts an artificial member into a real user membership.
 func HandleTransferMembership(app *pocketbase.PocketBase) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		session := c.Get("session").(domain.SessionData)
+		session, err := sessionOrRedirect(c)
+		if err != nil {
+			return err
+		}
 		joinCode := c.PathParam("join_code")
 		realUserID := c.FormValue("user_id")
 		artificialMemberID := c.FormValue("artificial_member_id")
@@ -33,34 +36,53 @@ func HandleTransferMembership(app *pocketbase.PocketBase) echo.HandlerFunc {
 			return c.Redirect(http.StatusSeeOther, "/"+joinCode)
 		}
 
-		membershipsCollection, err := app.Dao().FindCollectionByNameOrId("memberships")
-		if err != nil {
-			return err
-		}
-
-		artificialMembershipFilter, err := planutil.BuildEqualsFilter(
-			planutil.FilterTerm{Field: "plan_id", Value: planRecord.Id},
-			planutil.FilterTerm{Field: "user_id", Value: artificialMemberID},
-			planutil.FilterTerm{Field: "is_artificial", Value: "true", Literal: true},
-		)
-		if err != nil {
-			return err
-		}
-
-		artificialMembership, err := app.Dao().FindFirstRecordByFilter(
-			membershipsCollection.Id,
-			artificialMembershipFilter,
-		)
-		if err != nil || artificialMembership == nil {
-			return c.Redirect(http.StatusSeeOther, "/"+joinCode)
-		}
-
-		request, err := planutil.FindJoinRequest(app, planRecord.Id, realUserID)
-		if err != nil || request == nil {
-			return c.Redirect(http.StatusSeeOther, "/"+joinCode)
-		}
-
+		missingTransferPrerequisite := errors.New("membership transfer prerequisite not found")
 		err = app.Dao().RunInTransaction(func(txDao *daos.Dao) error {
+			membershipsCollection, err := txDao.FindCollectionByNameOrId("memberships")
+			if err != nil {
+				return err
+			}
+
+			artificialMembershipFilter, err := planutil.BuildEqualsFilter(
+				planutil.FilterTerm{Field: "plan_id", Value: planRecord.Id},
+				planutil.FilterTerm{Field: "user_id", Value: artificialMemberID},
+				planutil.FilterTerm{Field: "is_artificial", Value: true},
+			)
+			if err != nil {
+				return err
+			}
+
+			artificialMembership, err := txDao.FindFirstRecordByFilter(
+				membershipsCollection.Id,
+				artificialMembershipFilter.Expression,
+				artificialMembershipFilter.Params,
+			)
+			if err != nil || artificialMembership == nil {
+				return missingTransferPrerequisite
+			}
+
+			joinRequestsCollection, err := txDao.FindCollectionByNameOrId("join_requests")
+			if err != nil {
+				return err
+			}
+
+			requestFilter, err := planutil.BuildEqualsFilter(
+				planutil.FilterTerm{Field: "plan_id", Value: planRecord.Id},
+				planutil.FilterTerm{Field: "user_id", Value: realUserID},
+			)
+			if err != nil {
+				return err
+			}
+
+			request, err := txDao.FindFirstRecordByFilter(
+				joinRequestsCollection.Id,
+				requestFilter.Expression,
+				requestFilter.Params,
+			)
+			if err != nil || request == nil {
+				return missingTransferPrerequisite
+			}
+
 			paymentsCollection, err := txDao.FindCollectionByNameOrId("payments")
 			if err != nil {
 				return err
@@ -76,10 +98,11 @@ func HandleTransferMembership(app *pocketbase.PocketBase) echo.HandlerFunc {
 
 			artificialPayments, err := txDao.FindRecordsByFilter(
 				paymentsCollection.Id,
-				artificialPaymentsFilter,
+				artificialPaymentsFilter.Expression,
 				"",
 				-1,
 				0,
+				artificialPaymentsFilter.Params,
 			)
 			if err != nil {
 				return err
@@ -108,6 +131,9 @@ func HandleTransferMembership(app *pocketbase.PocketBase) echo.HandlerFunc {
 			return txDao.DeleteRecord(request)
 		})
 		if err != nil {
+			if errors.Is(err, missingTransferPrerequisite) {
+				return c.Redirect(http.StatusSeeOther, "/"+joinCode)
+			}
 			return err
 		}
 

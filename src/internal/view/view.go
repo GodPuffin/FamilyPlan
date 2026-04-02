@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"html/template"
 	"strings"
+	"sync"
 
 	"familyplan/src/internal/assets"
-	"familyplan/src/internal/domain"
+	"familyplan/src/internal/http/sessionutil"
+	"familyplan/src/internal/money"
 
 	"github.com/labstack/echo/v5"
 	"golang.org/x/text/cases"
@@ -19,7 +21,7 @@ var Funcs = template.FuncMap{
 	"lower": strings.ToLower,
 	"title": cases.Title(language.English).String,
 	"formatMoney": func(amount float64) string {
-		return fmt.Sprintf("$%.2f", amount)
+		return fmt.Sprintf("$%.2f", money.Normalize(amount))
 	},
 	"slice": func(s string, i, j int) string {
 		if i >= len(s) {
@@ -49,24 +51,25 @@ var Funcs = template.FuncMap{
 	},
 }
 
+var (
+	templateCacheMu sync.RWMutex
+	templateCache   = map[string]*template.Template{}
+)
+
 // RenderPage renders a page inside the shared layout template.
 func RenderPage(c echo.Context, page string, data map[string]interface{}) error {
 	if data == nil {
 		data = map[string]interface{}{}
 	}
 
-	if session, ok := c.Get("session").(domain.SessionData); ok {
+	if session, ok := sessionutil.Current(c); ok {
 		setDefault(data, "isAuthenticated", session.IsAuthenticated)
 		setDefault(data, "username", session.Username)
 		setDefault(data, "name", session.Name)
 		setDefault(data, "userId", session.UserID)
 	}
 
-	tmpl, err := template.New("layout").Funcs(Funcs).ParseFS(
-		assets.TemplatesFS,
-		"templates/layout.html",
-		"templates/"+page,
-	)
+	tmpl, err := loadTemplate(page)
 	if err != nil {
 		return err
 	}
@@ -97,4 +100,31 @@ func toFloat(value interface{}) (float64, bool) {
 	default:
 		return 0, false
 	}
+}
+
+func loadTemplate(page string) (*template.Template, error) {
+	templateCacheMu.RLock()
+	cached := templateCache[page]
+	templateCacheMu.RUnlock()
+	if cached != nil {
+		return cached, nil
+	}
+
+	tmpl, err := template.New("layout").Funcs(Funcs).ParseFS(
+		assets.TemplatesFS,
+		"templates/layout.html",
+		"templates/"+page,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	templateCacheMu.Lock()
+	if cached = templateCache[page]; cached == nil {
+		templateCache[page] = tmpl
+		cached = tmpl
+	}
+	templateCacheMu.Unlock()
+
+	return cached, nil
 }

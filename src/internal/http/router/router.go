@@ -1,6 +1,9 @@
 package router
 
 import (
+	"net/http"
+	"time"
+
 	authhandlers "familyplan/src/internal/http/handlers/auth"
 	"familyplan/src/internal/http/handlers/memberships"
 	"familyplan/src/internal/http/handlers/payments"
@@ -9,6 +12,7 @@ import (
 	authmw "familyplan/src/internal/http/middleware"
 
 	"github.com/labstack/echo/v5"
+	echomw "github.com/labstack/echo/v5/middleware"
 	"github.com/pocketbase/pocketbase"
 )
 
@@ -16,11 +20,27 @@ import (
 func Setup(app *pocketbase.PocketBase, e *echo.Echo) {
 	e.Use(authmw.SetupAuth(app))
 
+	authLimiter := echomw.RateLimiterWithConfig(echomw.RateLimiterConfig{
+		Store: echomw.NewRateLimiterMemoryStoreWithConfig(echomw.RateLimiterMemoryStoreConfig{
+			Rate:      0.25,
+			Burst:     5,
+			ExpiresIn: 10 * time.Minute,
+		}),
+		DenyHandler: func(c echo.Context, identifier string, err error) error {
+			path := "/login"
+			if c.Path() == "/register" {
+				path = "/register"
+			}
+
+			return c.Redirect(http.StatusSeeOther, path+"?error=Too+many+attempts.+Please+wait+and+try+again.")
+		},
+	})
+
 	e.GET("/", authhandlers.HandleHome())
 	e.GET("/login", authhandlers.HandleLoginPage())
-	e.POST("/login", authhandlers.HandleLoginSubmit(app))
+	e.POST("/login", authhandlers.HandleLoginSubmit(app), authLimiter)
 	e.GET("/register", authhandlers.HandleRegisterPage())
-	e.POST("/register", authhandlers.HandleRegisterSubmit(app))
+	e.POST("/register", authhandlers.HandleRegisterSubmit(app), authLimiter)
 	e.GET("/logout", authhandlers.HandleLogout())
 
 	authenticated := e.Group("", authmw.RequireAuth)

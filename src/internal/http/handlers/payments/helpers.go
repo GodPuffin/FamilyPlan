@@ -12,5 +12,5 @@ func parseForMonth(value string) string {
 		return ""
 	}
 
-	return forMonthDate.Format(time.RFC3339)
+	return forMonthDate.Format("2006-01-02")
 }

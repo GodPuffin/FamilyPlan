@@ -42,10 +42,11 @@ func loadMembers(app *pocketbase.PocketBase, plan domain.FamilyPlan) ([]domain.M
 
 	membershipRecords, err := app.Dao().FindRecordsByFilter(
 		membershipsCollection.Id,
-		membershipFilter,
+		membershipFilter.Expression,
 		"",
 		-1,
 		0,
+		membershipFilter.Params,
 	)
 	if err != nil {
 		return nil, 0, err
@@ -112,10 +113,11 @@ func loadJoinRequests(app *pocketbase.PocketBase, planID string) ([]domain.JoinR
 
 	requestRecords, err := app.Dao().FindRecordsByFilter(
 		joinRequestsCollection.Id,
-		requestFilter,
+		requestFilter.Expression,
 		"",
 		-1,
 		0,
+		requestFilter.Params,
 	)
 	if err != nil {
 		return nil, err

@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"familyplan/src/internal/billing"
-	"familyplan/src/internal/domain"
 	"familyplan/src/internal/planutil"
 
 	"github.com/labstack/echo/v5"
@@ -15,12 +14,11 @@ import (
 // HandleApprovePayment approves a pending payment.
 func HandleApprovePayment(app *pocketbase.PocketBase) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		session := c.Get("session").(domain.SessionData)
-		joinCode := c.PathParam("join_code")
-
-		if err := c.Request().ParseForm(); err != nil {
+		session, err := sessionOrRedirect(c)
+		if err != nil {
 			return err
 		}
+		joinCode := c.PathParam("join_code")
 		paymentID := c.FormValue("payment_id")
 
 		planRecord, err := planutil.FindPlanByJoinCode(app, joinCode)

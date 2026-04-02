@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"familyplan/src/internal/domain"
+	"familyplan/src/internal/http/sessionutil"
 
 	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/pocketbase"
@@ -40,8 +41,8 @@ func SetupAuth(app *pocketbase.PocketBase) echo.MiddlewareFunc {
 // RequireAuth redirects anonymous users to login.
 func RequireAuth(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		session := c.Get("session").(domain.SessionData)
-		if !session.IsAuthenticated {
+		session, ok := sessionutil.Current(c)
+		if !ok || !session.IsAuthenticated {
 			return c.Redirect(http.StatusSeeOther, "/login")
 		}
 		return next(c)

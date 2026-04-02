@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"familyplan/src/internal/domain"
+	"familyplan/src/internal/money"
 
 	"github.com/labstack/echo/v5"
 	pbmodels "github.com/pocketbase/pocketbase/models"
@@ -15,13 +16,13 @@ func buildFamilyPlan(record *pbmodels.Record, membersCount int, balance float64)
 		ID:             record.Id,
 		Name:           record.GetString("name"),
 		Description:    record.GetString("description"),
-		Cost:           record.GetFloat("cost"),
-		IndividualCost: record.GetFloat("individual_cost"),
+		Cost:           money.Normalize(record.GetFloat("cost")),
+		IndividualCost: money.Normalize(record.GetFloat("individual_cost")),
 		Owner:          ownerID(record),
 		JoinCode:       record.GetString("join_code"),
 		CreatedAt:      record.GetDateTime("created").String(),
 		MembersCount:   membersCount,
-		Balance:        balance,
+		Balance:        money.Normalize(balance),
 	}
 }
 
@@ -57,7 +58,7 @@ func buildPayment(record *pbmodels.Record, username, name string) domain.Payment
 		ID:       record.Id,
 		PlanID:   record.GetString("plan_id"),
 		UserID:   record.GetString("user_id"),
-		Amount:   record.GetFloat("amount"),
+		Amount:   money.Normalize(record.GetFloat("amount")),
 		Date:     dateValue,
 		Status:   record.GetString("status"),
 		Notes:    record.GetString("notes"),
