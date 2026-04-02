@@ -33,7 +33,7 @@ This is a web application for managing shared family plans and subscriptions, bu
 
 3. Run the application:
    ```
-   go run main.go
+   go run ./src/cmd/server
    ```
    
    Alternatively, use the Makefile:
@@ -74,17 +74,13 @@ When you first run the application, you'll need to set up the PocketBase databas
    
 ## Project Structure
 
-- `main.go` - Main application entry point
-- `models.go` - Data models and structures
-- `routes.go` - HTTP route definitions
-- `auth_handlers.go` - Authentication-related handlers
-- `plan_handlers.go` - Plan management handlers
-- `plan_actions.go` - Business logic for plan operations
-- `init_db.go` - Database initialization
-- `utils.go` - Utility functions
-- `template_renderer.go` - Template rendering utilities
-- `templates/` - HTML templates for the web interface
-- `static/` - Static assets (CSS, JS, images)
+- `src/cmd/server/` - Application entry point
+- `src/internal/bootstrap/` - PocketBase bootstrap and server startup
+- `src/internal/http/` - Router, middleware, and HTTP handlers
+- `src/internal/billing/` - Balance and membership billing logic
+- `src/internal/domain/` - View models and shared app structs
+- `src/internal/assets/` - Embedded HTML templates and static assets
+- `src/internal/support/` - Small shared helpers
 - `migrations/` - Database migration files
 - `pb_data/` - PocketBase data directory (created automatically)
 

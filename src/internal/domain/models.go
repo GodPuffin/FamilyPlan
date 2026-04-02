@@ -1,16 +1,16 @@
-package main
+package domain
 
-// SessionData holds user session information
+// SessionData holds user session information.
 type SessionData struct {
 	IsAuthenticated bool
-	UserId          string
+	UserID          string
 	Username        string
 	Name            string
 }
 
-// FamilyPlan represents a subscription plan that can be shared among family/friends
+// FamilyPlan represents a subscription plan that can be shared among family/friends.
 type FamilyPlan struct {
-	Id             string  `json:"id"`
+	ID             string  `json:"id"`
 	Name           string  `json:"name"`
 	Description    string  `json:"description"`
 	Cost           float64 `json:"cost"`
@@ -22,9 +22,9 @@ type FamilyPlan struct {
 	Balance        float64 `json:"balance"`
 }
 
-// Member represents a user who is part of a family plan
+// Member represents a user who is part of a family plan.
 type Member struct {
-	Id             string  `json:"id"`
+	ID             string  `json:"id"`
 	Username       string  `json:"username"`
 	Name           string  `json:"name"`
 	Balance        float64 `json:"balance"`
@@ -33,19 +33,19 @@ type Member struct {
 	IsArtificial   bool    `json:"is_artificial"`
 }
 
-// JoinRequest represents a user's request to join a family plan
+// JoinRequest represents a user's request to join a family plan.
 type JoinRequest struct {
-	UserId      string `json:"user_id"`
+	UserID      string `json:"user_id"`
 	Username    string `json:"username"`
 	Name        string `json:"name"`
 	RequestedAt string `json:"requested_at"`
 }
 
-// Payment represents a payment made by a member for a family plan
+// Payment represents a payment made by a member for a family plan.
 type Payment struct {
-	Id       string  `json:"id"`
-	PlanId   string  `json:"plan_id"`
-	UserId   string  `json:"user_id"`
+	ID       string  `json:"id"`
+	PlanID   string  `json:"plan_id"`
+	UserID   string  `json:"user_id"`
 	Amount   float64 `json:"amount"`
 	Date     string  `json:"date"`
 	Status   string  `json:"status"`

@@ -1,0 +1,42 @@
+package memberships
+
+import (
+	"net/http"
+
+	"familyplan/src/internal/domain"
+	"familyplan/src/internal/planutil"
+
+	"github.com/labstack/echo/v5"
+	"github.com/pocketbase/pocketbase"
+	pbmodels "github.com/pocketbase/pocketbase/models"
+)
+
+// HandleRequestJoin creates a join request for the current user.
+func HandleRequestJoin(app *pocketbase.PocketBase) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		session := c.Get("session").(domain.SessionData)
+		joinCode := c.PathParam("join_code")
+
+		planRecord, err := planutil.FindPlanByJoinCode(app, joinCode)
+		if err != nil || planRecord == nil {
+			return c.Redirect(http.StatusSeeOther, "/family-plans")
+		}
+
+		existingRequest, _ := planutil.FindJoinRequest(app, planRecord.Id, session.UserID)
+		if existingRequest == nil {
+			joinRequestsCollection, err := app.Dao().FindCollectionByNameOrId("join_requests")
+			if err != nil {
+				return err
+			}
+
+			newRequest := pbmodels.NewRecord(joinRequestsCollection)
+			newRequest.Set("plan_id", planRecord.Id)
+			newRequest.Set("user_id", session.UserID)
+			if err := app.Dao().SaveRecord(newRequest); err != nil {
+				return err
+			}
+		}
+
+		return c.Redirect(http.StatusSeeOther, "/"+joinCode)
+	}
+}
