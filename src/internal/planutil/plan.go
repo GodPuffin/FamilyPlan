@@ -1,8 +1,6 @@
 package planutil
 
 import (
-	"fmt"
-
 	"github.com/pocketbase/pocketbase"
 	pbmodels "github.com/pocketbase/pocketbase/models"
 )
@@ -45,9 +43,17 @@ func FindMembership(app *pocketbase.PocketBase, planID, userID string) (*pbmodel
 		return nil, err
 	}
 
+	filter, err := BuildEqualsFilter(
+		FilterTerm{Field: "plan_id", Value: planID},
+		FilterTerm{Field: "user_id", Value: userID},
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	return app.Dao().FindFirstRecordByFilter(
 		membershipsCollection.Id,
-		fmt.Sprintf("plan_id = '%s' && user_id = '%s'", planID, userID),
+		filter,
 	)
 }
 
@@ -58,8 +64,16 @@ func FindJoinRequest(app *pocketbase.PocketBase, planID, userID string) (*pbmode
 		return nil, err
 	}
 
+	filter, err := BuildEqualsFilter(
+		FilterTerm{Field: "plan_id", Value: planID},
+		FilterTerm{Field: "user_id", Value: userID},
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	return app.Dao().FindFirstRecordByFilter(
 		joinRequestsCollection.Id,
-		fmt.Sprintf("plan_id = '%s' && user_id = '%s'", planID, userID),
+		filter,
 	)
 }

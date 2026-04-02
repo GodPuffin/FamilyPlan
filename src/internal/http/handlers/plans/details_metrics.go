@@ -1,10 +1,10 @@
 package plans
 
 import (
-	"fmt"
 	"time"
 
 	"familyplan/src/internal/billing"
+	"familyplan/src/internal/planutil"
 
 	"github.com/pocketbase/pocketbase"
 	pbmodels "github.com/pocketbase/pocketbase/models"
@@ -16,9 +16,17 @@ func calculateTotalPayments(app *pocketbase.PocketBase, planID string) float64 {
 		return 0
 	}
 
+	filter, err := planutil.BuildEqualsFilter(
+		planutil.FilterTerm{Field: "plan_id", Value: planID},
+		planutil.FilterTerm{Field: "status", Value: "approved"},
+	)
+	if err != nil {
+		return 0
+	}
+
 	approvedPayments, err := app.Dao().FindRecordsByFilter(
 		paymentsCollection.Id,
-		fmt.Sprintf("plan_id = '%s' && status = 'approved'", planID),
+		filter,
 		"",
 		-1,
 		0,

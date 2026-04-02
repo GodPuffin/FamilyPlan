@@ -1,8 +1,9 @@
 package billing
 
 import (
-	"fmt"
 	"time"
+
+	"familyplan/src/internal/planutil"
 
 	"github.com/pocketbase/pocketbase"
 	pbmodels "github.com/pocketbase/pocketbase/models"
@@ -15,11 +16,18 @@ func GetActiveMembershipsForMonth(app *pocketbase.PocketBase, planID string, tar
 		return nil, err
 	}
 
+	filter, err := planutil.BuildEqualsFilter(
+		planutil.FilterTerm{Field: "plan_id", Value: planID},
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	allMemberships, err := app.Dao().FindRecordsByFilter(
 		membershipsCollection.Id,
-		fmt.Sprintf("plan_id = '%s'", planID),
+		filter,
 		"",
-		100,
+		-1,
 		0,
 	)
 	if err != nil {
@@ -36,10 +44,9 @@ func GetActiveMembershipsForMonth(app *pocketbase.PocketBase, planID string, tar
 			continue
 		}
 
-		dateEndedTime := membership.GetDateTime("date_ended").Time()
-		hasEnded := !membership.GetDateTime("date_ended").IsZero()
-
-		if hasEnded {
+		dateEndedField := membership.GetDateTime("date_ended")
+		if !dateEndedField.IsZero() {
+			dateEndedTime := dateEndedField.Time()
 			endedMonth := time.Date(dateEndedTime.Year(), dateEndedTime.Month(), 1, 0, 0, 0, 0, dateEndedTime.Location())
 			if endedMonth.Before(monthStart) {
 				continue

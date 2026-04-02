@@ -1,19 +1,23 @@
 package plans
 
 import (
-	"fmt"
-
 	"familyplan/src/internal/domain"
+	"familyplan/src/internal/planutil"
 
 	"github.com/pocketbase/pocketbase"
 )
 
 func loadPendingPayments(app *pocketbase.PocketBase, planID string) ([]domain.Payment, error) {
-	return loadPaymentsByFilter(app, planID, fmt.Sprintf("plan_id = '%s' && status = 'pending'", planID))
+	return loadPaymentsByTerms(app, planID,
+		planutil.FilterTerm{Field: "plan_id", Value: planID},
+		planutil.FilterTerm{Field: "status", Value: "pending"},
+	)
 }
 
 func loadAllPayments(app *pocketbase.PocketBase, planID string) ([]domain.Payment, error) {
-	return loadPaymentsByFilter(app, planID, fmt.Sprintf("plan_id = '%s'", planID))
+	return loadPaymentsByTerms(app, planID,
+		planutil.FilterTerm{Field: "plan_id", Value: planID},
+	)
 }
 
 func loadUserPayments(app *pocketbase.PocketBase, planID, userID string) ([]domain.Payment, error) {
@@ -22,9 +26,17 @@ func loadUserPayments(app *pocketbase.PocketBase, planID, userID string) ([]doma
 		return nil, err
 	}
 
+	filter, err := planutil.BuildEqualsFilter(
+		planutil.FilterTerm{Field: "plan_id", Value: planID},
+		planutil.FilterTerm{Field: "user_id", Value: userID},
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	paymentRecords, err := app.Dao().FindRecordsByFilter(
 		paymentsCollection.Id,
-		fmt.Sprintf("plan_id = '%s' && user_id = '%s'", planID, userID),
+		filter,
 		"-created",
 		20,
 		0,
@@ -41,8 +53,13 @@ func loadUserPayments(app *pocketbase.PocketBase, planID, userID string) ([]doma
 	return payments, nil
 }
 
-func loadPaymentsByFilter(app *pocketbase.PocketBase, planID, filter string) ([]domain.Payment, error) {
+func loadPaymentsByTerms(app *pocketbase.PocketBase, planID string, terms ...planutil.FilterTerm) ([]domain.Payment, error) {
 	paymentsCollection, err := app.Dao().FindCollectionByNameOrId("payments")
+	if err != nil {
+		return nil, err
+	}
+
+	filter, err := planutil.BuildEqualsFilter(terms...)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +68,7 @@ func loadPaymentsByFilter(app *pocketbase.PocketBase, planID, filter string) ([]
 		paymentsCollection.Id,
 		filter,
 		"-created",
-		100,
+		-1,
 		0,
 	)
 	if err != nil {
@@ -77,9 +94,17 @@ func paymentIdentity(app *pocketbase.PocketBase, planID, userID string) (string,
 		return "", "", err
 	}
 
+	filter, err := planutil.BuildEqualsFilter(
+		planutil.FilterTerm{Field: "plan_id", Value: planID},
+		planutil.FilterTerm{Field: "user_id", Value: userID},
+	)
+	if err != nil {
+		return "", "", err
+	}
+
 	artificialMembership, _ := app.Dao().FindFirstRecordByFilter(
 		membershipsCollection.Id,
-		fmt.Sprintf("plan_id = '%s' && user_id = '%s' && is_artificial = true", planID, userID),
+		filter+" && is_artificial = true",
 	)
 	if artificialMembership != nil {
 		return "", artificialMembership.GetString("name"), nil

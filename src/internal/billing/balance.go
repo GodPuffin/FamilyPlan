@@ -33,11 +33,20 @@ func CalculateMemberBalance(app *pocketbase.PocketBase, planID, userID string) (
 		return 0, err
 	}
 
+	filter, err := planutil.BuildEqualsFilter(
+		planutil.FilterTerm{Field: "plan_id", Value: planID},
+		planutil.FilterTerm{Field: "user_id", Value: userID},
+		planutil.FilterTerm{Field: "status", Value: "approved"},
+	)
+	if err != nil {
+		return 0, err
+	}
+
 	userPayments, err := app.Dao().FindRecordsByFilter(
 		paymentsCollection.Id,
-		fmt.Sprintf("plan_id = '%s' && user_id = '%s' && status = 'approved'", planID, userID),
+		filter,
 		"",
-		100,
+		-1,
 		0,
 	)
 	if err != nil {

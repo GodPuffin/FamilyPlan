@@ -56,7 +56,10 @@ func HandleLoginSubmit(app *pocketbase.PocketBase) echo.HandlerFunc {
 			return c.Redirect(http.StatusSeeOther, "/login?error=Invalid+password")
 		}
 
-		token := random.GenerateToken()
+		token, err := random.GenerateToken()
+		if err != nil {
+			return c.Redirect(http.StatusSeeOther, "/login?error=Authentication+failed")
+		}
 		authRecord.Set("tokenKey", token)
 		if err := app.Dao().SaveRecord(authRecord); err != nil {
 			return c.Redirect(http.StatusSeeOther, "/login?error=Authentication+failed")

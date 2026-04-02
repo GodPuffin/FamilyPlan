@@ -70,7 +70,10 @@ func HandleRegisterSubmit(app *pocketbase.PocketBase) echo.HandlerFunc {
 			return c.Redirect(http.StatusSeeOther, "/register?error=Registration+failed")
 		}
 
-		token := random.GenerateToken()
+		token, err := random.GenerateToken()
+		if err != nil {
+			return c.Redirect(http.StatusSeeOther, "/register?error=Registration+failed")
+		}
 		record.Set("tokenKey", token)
 		if err := app.Dao().SaveRecord(record); err != nil {
 			return c.Redirect(http.StatusSeeOther, "/login?success=Registration+successful.+Please+login.")

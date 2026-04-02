@@ -1,10 +1,9 @@
 package plans
 
 import (
-	"fmt"
-
 	"familyplan/src/internal/billing"
 	"familyplan/src/internal/domain"
+	"familyplan/src/internal/planutil"
 
 	"github.com/pocketbase/pocketbase"
 )
@@ -34,11 +33,18 @@ func loadMembers(app *pocketbase.PocketBase, plan domain.FamilyPlan) ([]domain.M
 		return nil, 0, err
 	}
 
+	membershipFilter, err := planutil.BuildEqualsFilter(
+		planutil.FilterTerm{Field: "plan_id", Value: plan.ID},
+	)
+	if err != nil {
+		return nil, 0, err
+	}
+
 	membershipRecords, err := app.Dao().FindRecordsByFilter(
 		membershipsCollection.Id,
-		fmt.Sprintf("plan_id = '%s'", plan.ID),
+		membershipFilter,
 		"",
-		100,
+		-1,
 		0,
 	)
 	if err != nil {
@@ -97,11 +103,18 @@ func loadJoinRequests(app *pocketbase.PocketBase, planID string) ([]domain.JoinR
 		return nil, err
 	}
 
+	requestFilter, err := planutil.BuildEqualsFilter(
+		planutil.FilterTerm{Field: "plan_id", Value: planID},
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	requestRecords, err := app.Dao().FindRecordsByFilter(
 		joinRequestsCollection.Id,
-		fmt.Sprintf("plan_id = '%s'", planID),
+		requestFilter,
 		"",
-		100,
+		-1,
 		0,
 	)
 	if err != nil {

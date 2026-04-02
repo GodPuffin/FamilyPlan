@@ -1,7 +1,9 @@
 package random
 
 import (
-	"math/rand"
+	crand "crypto/rand"
+	"math/big"
+	mathrand "math/rand"
 	"time"
 )
 
@@ -9,8 +11,8 @@ import (
 func GenerateJoinCode(length int) string {
 	const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
-	source := rand.NewSource(time.Now().UnixNano())
-	rng := rand.New(source)
+	source := mathrand.NewSource(time.Now().UnixNano())
+	rng := mathrand.New(source)
 
 	code := make([]byte, length)
 	for i := 0; i < length; i++ {
@@ -21,19 +23,27 @@ func GenerateJoinCode(length int) string {
 }
 
 // GenerateToken creates a random auth token.
-func GenerateToken() string {
+func GenerateToken() (string, error) {
 	const (
 		tokenLength = 32
 		charset     = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	)
 
-	source := rand.NewSource(time.Now().UnixNano())
-	rng := rand.New(source)
+	return secureString(tokenLength, charset)
+}
 
-	token := make([]byte, tokenLength)
-	for i := range token {
-		token[i] = charset[rng.Intn(len(charset))]
+func secureString(length int, charset string) (string, error) {
+	value := make([]byte, length)
+	max := big.NewInt(int64(len(charset)))
+
+	for i := range value {
+		index, err := crand.Int(crand.Reader, max)
+		if err != nil {
+			return "", err
+		}
+
+		value[i] = charset[index.Int64()]
 	}
 
-	return string(token)
+	return string(value), nil
 }

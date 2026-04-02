@@ -1,10 +1,9 @@
 package plans
 
 import (
-	"fmt"
-
 	"familyplan/src/internal/billing"
 	"familyplan/src/internal/domain"
+	"familyplan/src/internal/planutil"
 	"familyplan/src/internal/view"
 
 	"github.com/labstack/echo/v5"
@@ -22,11 +21,16 @@ func HandleFamilyPlansList(app *pocketbase.PocketBase) echo.HandlerFunc {
 			return err
 		}
 
+		ownerFilter, err := planutil.BuildContainsFilter("owner", session.UserID)
+		if err != nil {
+			return err
+		}
+
 		ownedPlanRecords, err := app.Dao().FindRecordsByFilter(
 			plansCollection.Id,
-			fmt.Sprintf("owner ~ '%s'", session.UserID),
+			ownerFilter,
 			"",
-			100,
+			-1,
 			0,
 		)
 		if err != nil {
@@ -38,11 +42,18 @@ func HandleFamilyPlansList(app *pocketbase.PocketBase) echo.HandlerFunc {
 			return err
 		}
 
+		membershipFilter, err := planutil.BuildEqualsFilter(
+			planutil.FilterTerm{Field: "user_id", Value: session.UserID},
+		)
+		if err != nil {
+			return err
+		}
+
 		memberships, err := app.Dao().FindRecordsByFilter(
 			membershipsCollection.Id,
-			fmt.Sprintf("user_id = '%s'", session.UserID),
+			membershipFilter,
 			"",
-			100,
+			-1,
 			0,
 		)
 		if err != nil {
@@ -72,11 +83,18 @@ func HandleFamilyPlansList(app *pocketbase.PocketBase) echo.HandlerFunc {
 
 		plansList := make([]domain.FamilyPlan, 0, len(planMap))
 		for _, planRecord := range planMap {
+			planMembershipFilter, err := planutil.BuildEqualsFilter(
+				planutil.FilterTerm{Field: "plan_id", Value: planRecord.Id},
+			)
+			if err != nil {
+				return err
+			}
+
 			membershipRecords, err := app.Dao().FindRecordsByFilter(
 				membershipsCollection.Id,
-				fmt.Sprintf("plan_id = '%s'", planRecord.Id),
+				planMembershipFilter,
 				"",
-				100,
+				-1,
 				0,
 			)
 

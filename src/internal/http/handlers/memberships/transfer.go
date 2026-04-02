@@ -1,7 +1,6 @@
 package memberships
 
 import (
-	"fmt"
 	"net/http"
 
 	"familyplan/src/internal/domain"
@@ -38,9 +37,17 @@ func HandleTransferMembership(app *pocketbase.PocketBase) echo.HandlerFunc {
 			return err
 		}
 
+		artificialMembershipFilter, err := planutil.BuildEqualsFilter(
+			planutil.FilterTerm{Field: "plan_id", Value: planRecord.Id},
+			planutil.FilterTerm{Field: "user_id", Value: artificialMemberID},
+		)
+		if err != nil {
+			return err
+		}
+
 		artificialMembership, err := app.Dao().FindFirstRecordByFilter(
 			membershipsCollection.Id,
-			fmt.Sprintf("plan_id = '%s' && user_id = '%s' && is_artificial = true", planRecord.Id, artificialMemberID),
+			artificialMembershipFilter+" && is_artificial = true",
 		)
 		if err != nil || artificialMembership == nil {
 			return c.Redirect(http.StatusSeeOther, "/"+joinCode)
@@ -56,11 +63,19 @@ func HandleTransferMembership(app *pocketbase.PocketBase) echo.HandlerFunc {
 			return err
 		}
 
+		artificialPaymentsFilter, err := planutil.BuildEqualsFilter(
+			planutil.FilterTerm{Field: "plan_id", Value: planRecord.Id},
+			planutil.FilterTerm{Field: "user_id", Value: artificialMemberID},
+		)
+		if err != nil {
+			return err
+		}
+
 		artificialPayments, err := app.Dao().FindRecordsByFilter(
 			paymentsCollection.Id,
-			fmt.Sprintf("plan_id = '%s' && user_id = '%s'", planRecord.Id, artificialMemberID),
+			artificialPaymentsFilter,
 			"",
-			100,
+			-1,
 			0,
 		)
 		if err == nil {

@@ -34,9 +34,16 @@ func HandleDeletePlan(app *pocketbase.PocketBase) echo.HandlerFunc {
 				return err
 			}
 
+			membershipFilter, err := planutil.BuildEqualsFilter(
+				planutil.FilterTerm{Field: "plan_id", Value: planRecord.Id},
+			)
+			if err != nil {
+				return err
+			}
+
 			memberships, err := txDao.FindRecordsByFilter(
 				membershipsCollection.Id,
-				fmt.Sprintf("plan_id = '%s'", planRecord.Id),
+				membershipFilter,
 				"",
 				-1,
 				0,
@@ -54,9 +61,16 @@ func HandleDeletePlan(app *pocketbase.PocketBase) echo.HandlerFunc {
 				return err
 			}
 
+			joinRequestFilter, err := planutil.BuildEqualsFilter(
+				planutil.FilterTerm{Field: "plan_id", Value: planRecord.Id},
+			)
+			if err != nil {
+				return err
+			}
+
 			joinRequests, err := txDao.FindRecordsByFilter(
 				joinRequestsCollection.Id,
-				fmt.Sprintf("plan_id = '%s'", planRecord.Id),
+				joinRequestFilter,
 				"",
 				-1,
 				0,
