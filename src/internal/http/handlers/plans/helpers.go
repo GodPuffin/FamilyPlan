@@ -47,12 +47,18 @@ func activeMembershipCount(memberships []*pbmodels.Record) int {
 }
 
 func buildPayment(record *pbmodels.Record, username, name string) domain.Payment {
+	paymentDate := record.GetDateTime("date")
+	dateValue := ""
+	if !paymentDate.IsZero() {
+		dateValue = paymentDate.Time().Format("2006-01-02")
+	}
+
 	return domain.Payment{
 		ID:       record.Id,
 		PlanID:   record.GetString("plan_id"),
 		UserID:   record.GetString("user_id"),
 		Amount:   record.GetFloat("amount"),
-		Date:     record.GetDateTime("date").String()[:10],
+		Date:     dateValue,
 		Status:   record.GetString("status"),
 		Notes:    record.GetString("notes"),
 		ForMonth: formatForMonth(record),
@@ -67,7 +73,7 @@ func formatForMonth(record *pbmodels.Record) string {
 		return ""
 	}
 
-	return forMonth.String()[:7]
+	return forMonth.Time().Format("2006-01")
 }
 
 func redirectToPlan(c echo.Context, joinCode string) error {

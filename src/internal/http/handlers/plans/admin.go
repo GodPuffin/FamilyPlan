@@ -83,6 +83,33 @@ func HandleDeletePlan(app *pocketbase.PocketBase) echo.HandlerFunc {
 				}
 			}
 
+			paymentsCollection, err := txDao.FindCollectionByNameOrId("payments")
+			if err != nil {
+				return err
+			}
+
+			paymentsFilter, err := planutil.BuildEqualsFilter(
+				planutil.FilterTerm{Field: "plan_id", Value: planRecord.Id},
+			)
+			if err != nil {
+				return err
+			}
+
+			payments, err := txDao.FindRecordsByFilter(
+				paymentsCollection.Id,
+				paymentsFilter,
+				"",
+				-1,
+				0,
+			)
+			if err == nil {
+				for _, payment := range payments {
+					if err := txDao.DeleteRecord(payment); err != nil {
+						return err
+					}
+				}
+			}
+
 			return txDao.DeleteRecord(planRecord)
 		})
 		if err != nil {

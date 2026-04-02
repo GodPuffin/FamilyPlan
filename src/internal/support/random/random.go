@@ -3,23 +3,18 @@ package random
 import (
 	crand "crypto/rand"
 	"math/big"
-	mathrand "math/rand"
-	"time"
 )
 
 // GenerateJoinCode creates a random plan join code.
 func GenerateJoinCode(length int) string {
 	const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
-	source := mathrand.NewSource(time.Now().UnixNano())
-	rng := mathrand.New(source)
-
-	code := make([]byte, length)
-	for i := 0; i < length; i++ {
-		code[i] = charset[rng.Intn(len(charset))]
+	code, err := secureString(length, charset)
+	if err != nil {
+		return ""
 	}
 
-	return string(code)
+	return code
 }
 
 // GenerateToken creates a random auth token.

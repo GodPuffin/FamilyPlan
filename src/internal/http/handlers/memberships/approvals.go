@@ -8,6 +8,7 @@ import (
 
 	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/pocketbase"
+	"github.com/pocketbase/pocketbase/daos"
 	pbmodels "github.com/pocketbase/pocketbase/models"
 )
 
@@ -32,23 +33,37 @@ func HandleApproveRequest(app *pocketbase.PocketBase) echo.HandlerFunc {
 			return c.Redirect(http.StatusSeeOther, "/"+joinCode)
 		}
 
-		existingMembership, _ := planutil.FindMembership(app, planRecord.Id, userID)
-		if existingMembership == nil {
-			membershipsCollection, err := app.Dao().FindCollectionByNameOrId("memberships")
+		err = app.Dao().RunInTransaction(func(txDao *daos.Dao) error {
+			membershipsCollection, err := txDao.FindCollectionByNameOrId("memberships")
 			if err != nil {
 				return err
 			}
 
-			newMembership := pbmodels.NewRecord(membershipsCollection)
-			newMembership.Set("plan_id", planRecord.Id)
-			newMembership.Set("user_id", userID)
-			newMembership.Set("is_artificial", false)
-			if err := app.Dao().SaveRecord(newMembership); err != nil {
+			membershipFilter, err := planutil.BuildEqualsFilter(
+				planutil.FilterTerm{Field: "plan_id", Value: planRecord.Id},
+				planutil.FilterTerm{Field: "user_id", Value: userID},
+			)
+			if err != nil {
 				return err
 			}
-		}
 
-		if err := app.Dao().DeleteRecord(request); err != nil {
+			existingMembership, _ := txDao.FindFirstRecordByFilter(
+				membershipsCollection.Id,
+				membershipFilter,
+			)
+			if existingMembership == nil {
+				newMembership := pbmodels.NewRecord(membershipsCollection)
+				newMembership.Set("plan_id", planRecord.Id)
+				newMembership.Set("user_id", userID)
+				newMembership.Set("is_artificial", false)
+				if err := txDao.SaveRecord(newMembership); err != nil {
+					return err
+				}
+			}
+
+			return txDao.DeleteRecord(request)
+		})
+		if err != nil {
 			return err
 		}
 

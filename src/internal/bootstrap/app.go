@@ -1,9 +1,6 @@
 package bootstrap
 
 import (
-	"fmt"
-	"os"
-
 	"familyplan/src/internal/assets"
 	"familyplan/src/internal/http/router"
 
@@ -17,8 +14,6 @@ import (
 
 // Run boots the PocketBase app and starts serving HTTP traffic.
 func Run() error {
-	fmt.Println("Starting FamilyPlan application...")
-
 	app := pocketbase.New()
 
 	migratecmd.MustRegister(app, app.RootCmd, migratecmd.Config{
@@ -38,11 +33,6 @@ func Run() error {
 		router.Setup(app, e.Router)
 		return nil
 	})
-
-	os.Args = append([]string{os.Args[0], "serve", "--http=0.0.0.0:8090"}, os.Args[1:]...)
-
-	fmt.Println("Server starting, will be accessible at http://0.0.0.0:8090")
-	fmt.Println("Command arguments:", os.Args)
 
 	return app.Start()
 }

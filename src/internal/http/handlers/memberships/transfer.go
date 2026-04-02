@@ -8,6 +8,7 @@ import (
 
 	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/pocketbase"
+	"github.com/pocketbase/pocketbase/daos"
 	pbmodels "github.com/pocketbase/pocketbase/models"
 )
 
@@ -58,47 +59,54 @@ func HandleTransferMembership(app *pocketbase.PocketBase) echo.HandlerFunc {
 			return c.Redirect(http.StatusSeeOther, "/"+joinCode)
 		}
 
-		paymentsCollection, err := app.Dao().FindCollectionByNameOrId("payments")
-		if err != nil {
-			return err
-		}
+		err = app.Dao().RunInTransaction(func(txDao *daos.Dao) error {
+			paymentsCollection, err := txDao.FindCollectionByNameOrId("payments")
+			if err != nil {
+				return err
+			}
 
-		artificialPaymentsFilter, err := planutil.BuildEqualsFilter(
-			planutil.FilterTerm{Field: "plan_id", Value: planRecord.Id},
-			planutil.FilterTerm{Field: "user_id", Value: artificialMemberID},
-		)
-		if err != nil {
-			return err
-		}
+			artificialPaymentsFilter, err := planutil.BuildEqualsFilter(
+				planutil.FilterTerm{Field: "plan_id", Value: planRecord.Id},
+				planutil.FilterTerm{Field: "user_id", Value: artificialMemberID},
+			)
+			if err != nil {
+				return err
+			}
 
-		artificialPayments, err := app.Dao().FindRecordsByFilter(
-			paymentsCollection.Id,
-			artificialPaymentsFilter,
-			"",
-			-1,
-			0,
-		)
-		if err == nil {
+			artificialPayments, err := txDao.FindRecordsByFilter(
+				paymentsCollection.Id,
+				artificialPaymentsFilter,
+				"",
+				-1,
+				0,
+			)
+			if err != nil {
+				return err
+			}
+
 			for _, payment := range artificialPayments {
 				payment.Set("user_id", realUserID)
-				_ = app.Dao().SaveRecord(payment)
+				if err := txDao.SaveRecord(payment); err != nil {
+					return err
+				}
 			}
-		}
 
-		if err := app.Dao().DeleteRecord(artificialMembership); err != nil {
-			return err
-		}
+			if err := txDao.DeleteRecord(artificialMembership); err != nil {
+				return err
+			}
 
-		newMembership := pbmodels.NewRecord(membershipsCollection)
-		newMembership.Set("plan_id", planRecord.Id)
-		newMembership.Set("user_id", realUserID)
-		newMembership.Set("is_artificial", false)
-		newMembership.Set("created", artificialMembership.GetDateTime("created"))
-		if err := app.Dao().SaveRecord(newMembership); err != nil {
-			return err
-		}
+			newMembership := pbmodels.NewRecord(membershipsCollection)
+			newMembership.Set("plan_id", planRecord.Id)
+			newMembership.Set("user_id", realUserID)
+			newMembership.Set("is_artificial", false)
+			newMembership.Set("created", artificialMembership.GetDateTime("created"))
+			if err := txDao.SaveRecord(newMembership); err != nil {
+				return err
+			}
 
-		if err := app.Dao().DeleteRecord(request); err != nil {
+			return txDao.DeleteRecord(request)
+		})
+		if err != nil {
 			return err
 		}
 

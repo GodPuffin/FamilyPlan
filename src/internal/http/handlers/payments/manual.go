@@ -36,7 +36,7 @@ func HandleAddManualPayment(app *pocketbase.PocketBase) echo.HandlerFunc {
 		}
 
 		amount, err := strconv.ParseFloat(c.FormValue("amount"), 64)
-		if err != nil || amount == 0 {
+		if err != nil || amount <= 0 {
 			return c.Redirect(http.StatusSeeOther, "/"+joinCode)
 		}
 
