@@ -2,9 +2,9 @@ root = "."
 tmp_dir = "tmp"
 
 [build]
-cmd = "go build -o ./tmp/app.exe ."
+cmd = "go build -o ./tmp/app.exe ./src/cmd/server"
 bin = "tmp/app.exe"
-include_ext = ["go", "html"]
+include_ext = ["go", "html", "css", "ico", "svg"]
 exclude_dir = ["tmp", "vendor", "pb_data"]
 exclude_regex = ["_test.go"]
 

@@ -5,7 +5,7 @@ all: run
 
 # Run the application
 run:
-	go run main.go
+	go run ./src/cmd/server
 
 # Run with hot reload using Air
 dev:
@@ -13,7 +13,7 @@ dev:
 
 # Build the application
 build:
-	go build -o app main.go
+	go build -o app ./src/cmd/server
 
 # Clean build artifacts
 clean:

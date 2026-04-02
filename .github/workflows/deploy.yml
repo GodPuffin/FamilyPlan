@@ -26,7 +26,7 @@ jobs:
       - name: Build application
         run: |
           go mod tidy
-          GOOS=linux GOARCH=amd64 go build -o app
+          GOOS=linux GOARCH=amd64 go build -o app ./src/cmd/server
 
       - name: Set up SSH
         run: |
