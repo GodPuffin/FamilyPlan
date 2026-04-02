@@ -1,6 +1,7 @@
 package memberships
 
 import (
+	"errors"
 	"net/http"
 
 	"familyplan/src/internal/planutil"
@@ -33,33 +34,25 @@ func HandleApproveRequest(app *pocketbase.PocketBase) echo.HandlerFunc {
 			return c.Redirect(http.StatusSeeOther, "/"+joinCode)
 		}
 
-		request, err := planutil.FindJoinRequest(app, planRecord.Id, userID)
-		if err != nil {
-			return err
-		}
-		if request == nil {
-			return c.Redirect(http.StatusSeeOther, "/"+joinCode)
-		}
-
+		requestNotFound := errors.New("join request not found")
 		err = app.Dao().RunInTransaction(func(txDao *daos.Dao) error {
+			request, err := planutil.FindJoinRequestWithDao(txDao, planRecord.Id, userID)
+			if err != nil {
+				return err
+			}
+			if request == nil {
+				return requestNotFound
+			}
+
 			membershipsCollection, err := txDao.FindCollectionByNameOrId("memberships")
 			if err != nil {
 				return err
 			}
 
-			membershipFilter, err := planutil.BuildEqualsFilter(
-				planutil.FilterTerm{Field: "plan_id", Value: planRecord.Id},
-				planutil.FilterTerm{Field: "user_id", Value: userID},
-			)
+			existingMembership, err := planutil.FindMembershipWithDao(txDao, planRecord.Id, userID)
 			if err != nil {
 				return err
 			}
-
-			existingMembership, _ := txDao.FindFirstRecordByFilter(
-				membershipsCollection.Id,
-				membershipFilter.Expression,
-				membershipFilter.Params,
-			)
 			if existingMembership == nil {
 				newMembership := pbmodels.NewRecord(membershipsCollection)
 				newMembership.Set("plan_id", planRecord.Id)
@@ -73,6 +66,9 @@ func HandleApproveRequest(app *pocketbase.PocketBase) echo.HandlerFunc {
 			return txDao.DeleteRecord(request)
 		})
 		if err != nil {
+			if errors.Is(err, requestNotFound) {
+				return c.Redirect(http.StatusSeeOther, "/"+joinCode)
+			}
 			return err
 		}
 

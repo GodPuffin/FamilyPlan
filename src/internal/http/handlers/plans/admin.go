@@ -3,6 +3,7 @@ package plans
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"familyplan/src/internal/money"
 	"familyplan/src/internal/planutil"
@@ -143,10 +144,14 @@ func HandleUpdatePlan(app *pocketbase.PocketBase) echo.HandlerFunc {
 			return c.Redirect(http.StatusSeeOther, "/family-plans")
 		}
 
-		name := c.FormValue("name")
+		name := strings.TrimSpace(c.FormValue("name"))
 		description := c.FormValue("description")
 		costStr := c.FormValue("cost")
 		individualCostStr := c.FormValue("individual_cost")
+
+		if name == "" {
+			return redirectToPlan(c, joinCode)
+		}
 
 		cost, err := money.ParseAmount(costStr)
 		if err != nil {
