@@ -70,9 +70,12 @@ func defaultToServeCommand() {
 			return
 		}
 
-		if equalsIndex := strings.Index(arg, "="); equalsIndex > 0 {
-			arg = arg[:equalsIndex]
-		} else if _, ok := flagsWithValue[arg]; ok && i+1 < len(args) {
+		flagName := arg
+		if equalsIndex := strings.Index(flagName, "="); equalsIndex > 0 {
+			flagName = flagName[:equalsIndex]
+		}
+
+		if _, ok := flagsWithValue[flagName]; ok && flagName == arg && i+1 < len(args) {
 			i++
 		}
 	}
