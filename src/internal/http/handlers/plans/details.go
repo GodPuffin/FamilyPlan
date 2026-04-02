@@ -20,7 +20,10 @@ func HandlePlanDetails(app *pocketbase.PocketBase) echo.HandlerFunc {
 		joinCode := c.PathParam("join_code")
 
 		planRecord, err := planutil.FindPlanByJoinCode(app, joinCode)
-		if err != nil || planRecord == nil {
+		if err != nil {
+			return err
+		}
+		if planRecord == nil {
 			return view.RenderPage(c, "plan_details.html", map[string]interface{}{
 				"title":     "Plan Not Found",
 				"not_found": true,
@@ -29,12 +32,18 @@ func HandlePlanDetails(app *pocketbase.PocketBase) echo.HandlerFunc {
 		}
 
 		isOwner := planutil.IsOwner(planRecord, session.UserID)
-		existingMembership, _ := planutil.FindMembership(app, planRecord.Id, session.UserID)
+		existingMembership, err := planutil.FindMembership(app, planRecord.Id, session.UserID)
+		if err != nil {
+			return err
+		}
 		isMember := existingMembership != nil || isOwner
 
 		pendingRequest := false
 		if !isMember {
-			existingRequest, _ := planutil.FindJoinRequest(app, planRecord.Id, session.UserID)
+			existingRequest, err := planutil.FindJoinRequest(app, planRecord.Id, session.UserID)
+			if err != nil {
+				return err
+			}
 			pendingRequest = existingRequest != nil
 		}
 

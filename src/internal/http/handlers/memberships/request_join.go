@@ -20,11 +20,17 @@ func HandleRequestJoin(app *pocketbase.PocketBase) echo.HandlerFunc {
 		joinCode := c.PathParam("join_code")
 
 		planRecord, err := planutil.FindPlanByJoinCode(app, joinCode)
-		if err != nil || planRecord == nil {
+		if err != nil {
+			return err
+		}
+		if planRecord == nil {
 			return c.Redirect(http.StatusSeeOther, "/family-plans")
 		}
 
-		existingRequest, _ := planutil.FindJoinRequest(app, planRecord.Id, session.UserID)
+		existingRequest, err := planutil.FindJoinRequest(app, planRecord.Id, session.UserID)
+		if err != nil {
+			return err
+		}
 		if existingRequest == nil {
 			joinRequestsCollection, err := app.Dao().FindCollectionByNameOrId("join_requests")
 			if err != nil {

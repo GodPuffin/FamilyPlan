@@ -1,7 +1,11 @@
 package planutil
 
 import (
+	"database/sql"
+	"errors"
+
 	"github.com/pocketbase/pocketbase"
+	"github.com/pocketbase/pocketbase/daos"
 	pbmodels "github.com/pocketbase/pocketbase/models"
 )
 
@@ -13,12 +17,22 @@ const (
 
 // FindPlanByJoinCode returns the plan record matching the join code.
 func FindPlanByJoinCode(app *pocketbase.PocketBase, joinCode string) (*pbmodels.Record, error) {
-	plansCollection, err := app.Dao().FindCollectionByNameOrId(collectionFamilyPlans)
+	return FindPlanByJoinCodeWithDao(app.Dao(), joinCode)
+}
+
+// FindPlanByJoinCodeWithDao returns the plan record matching the join code using the provided dao.
+func FindPlanByJoinCodeWithDao(dao *daos.Dao, joinCode string) (*pbmodels.Record, error) {
+	plansCollection, err := dao.FindCollectionByNameOrId(collectionFamilyPlans)
 	if err != nil {
 		return nil, err
 	}
 
-	return app.Dao().FindFirstRecordByData(plansCollection.Id, "join_code", joinCode)
+	record, err := dao.FindFirstRecordByData(plansCollection.Id, "join_code", joinCode)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+
+	return record, err
 }
 
 // OwnerID returns the plan owner's user ID.
@@ -38,7 +52,12 @@ func IsOwner(plan *pbmodels.Record, userID string) bool {
 
 // FindMembership returns the membership record for a plan/user pair.
 func FindMembership(app *pocketbase.PocketBase, planID, userID string) (*pbmodels.Record, error) {
-	membershipsCollection, err := app.Dao().FindCollectionByNameOrId(collectionMemberships)
+	return FindMembershipWithDao(app.Dao(), planID, userID)
+}
+
+// FindMembershipWithDao returns the membership record for a plan/user pair using the provided dao.
+func FindMembershipWithDao(dao *daos.Dao, planID, userID string) (*pbmodels.Record, error) {
+	membershipsCollection, err := dao.FindCollectionByNameOrId(collectionMemberships)
 	if err != nil {
 		return nil, err
 	}
@@ -51,16 +70,26 @@ func FindMembership(app *pocketbase.PocketBase, planID, userID string) (*pbmodel
 		return nil, err
 	}
 
-	return app.Dao().FindFirstRecordByFilter(
+	record, err := dao.FindFirstRecordByFilter(
 		membershipsCollection.Id,
 		filter.Expression,
 		filter.Params,
 	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+
+	return record, err
 }
 
 // FindJoinRequest returns the join request record for a plan/user pair.
 func FindJoinRequest(app *pocketbase.PocketBase, planID, userID string) (*pbmodels.Record, error) {
-	joinRequestsCollection, err := app.Dao().FindCollectionByNameOrId(collectionJoinRequests)
+	return FindJoinRequestWithDao(app.Dao(), planID, userID)
+}
+
+// FindJoinRequestWithDao returns the join request record for a plan/user pair using the provided dao.
+func FindJoinRequestWithDao(dao *daos.Dao, planID, userID string) (*pbmodels.Record, error) {
+	joinRequestsCollection, err := dao.FindCollectionByNameOrId(collectionJoinRequests)
 	if err != nil {
 		return nil, err
 	}
@@ -73,9 +102,14 @@ func FindJoinRequest(app *pocketbase.PocketBase, planID, userID string) (*pbmode
 		return nil, err
 	}
 
-	return app.Dao().FindFirstRecordByFilter(
+	record, err := dao.FindFirstRecordByFilter(
 		joinRequestsCollection.Id,
 		filter.Expression,
 		filter.Params,
 	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+
+	return record, err
 }

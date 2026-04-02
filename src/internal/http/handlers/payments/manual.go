@@ -10,6 +10,7 @@ import (
 
 	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/pocketbase"
+	"github.com/pocketbase/pocketbase/daos"
 	pbmodels "github.com/pocketbase/pocketbase/models"
 )
 
@@ -24,7 +25,10 @@ func HandleAddManualPayment(app *pocketbase.PocketBase) echo.HandlerFunc {
 		userID := c.FormValue("user_id")
 
 		planRecord, err := planutil.FindPlanByJoinCode(app, joinCode)
-		if err != nil || planRecord == nil {
+		if err != nil {
+			return err
+		}
+		if planRecord == nil {
 			return c.Redirect(http.StatusSeeOther, "/family-plans")
 		}
 
@@ -33,7 +37,10 @@ func HandleAddManualPayment(app *pocketbase.PocketBase) echo.HandlerFunc {
 		}
 
 		membership, err := planutil.FindMembership(app, planRecord.Id, userID)
-		if err != nil || membership == nil {
+		if err != nil {
+			return err
+		}
+		if membership == nil {
 			return c.Redirect(http.StatusSeeOther, "/"+joinCode)
 		}
 
@@ -53,17 +60,24 @@ func HandleAddManualPayment(app *pocketbase.PocketBase) echo.HandlerFunc {
 		payment.Set("amount", amount)
 		payment.Set("date", time.Now())
 		payment.Set("status", "approved")
-		payment.Set("notes", c.FormValue("notes"))
+		notes, err := normalizeNotes(c.FormValue("notes"))
+		if err != nil {
+			return c.Redirect(http.StatusSeeOther, "/"+joinCode)
+		}
+		payment.Set("notes", notes)
 
 		if forMonth := parseForMonth(c.FormValue("for_month")); forMonth != "" {
 			payment.Set("for_month", forMonth)
 		}
 
-		if err := app.Dao().SaveRecord(payment); err != nil {
-			return err
-		}
+		err = app.Dao().RunInTransaction(func(txDao *daos.Dao) error {
+			if err := txDao.SaveRecord(payment); err != nil {
+				return err
+			}
 
-		if err := billing.EndMembershipIfSettled(app, planRecord.Id, userID, time.Now()); err != nil {
+			return billing.EndMembershipIfSettledWithDao(txDao, planRecord.Id, userID, time.Now())
+		})
+		if err != nil {
 			return err
 		}
 

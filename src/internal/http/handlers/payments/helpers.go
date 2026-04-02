@@ -1,6 +1,13 @@
 package payments
 
-import "time"
+import (
+	"fmt"
+	"strings"
+	"time"
+	"unicode/utf8"
+)
+
+const maxPaymentNotesLength = 500
 
 func parseForMonth(value string) string {
 	if value == "" {
@@ -13,4 +20,13 @@ func parseForMonth(value string) string {
 	}
 
 	return forMonthDate.Format("2006-01-02")
+}
+
+func normalizeNotes(value string) (string, error) {
+	notes := strings.TrimSpace(value)
+	if utf8.RuneCountInString(notes) > maxPaymentNotesLength {
+		return "", fmt.Errorf("notes must be %d characters or fewer", maxPaymentNotesLength)
+	}
+
+	return notes, nil
 }

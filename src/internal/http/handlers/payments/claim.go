@@ -22,11 +22,17 @@ func HandleClaimPayment(app *pocketbase.PocketBase) echo.HandlerFunc {
 		joinCode := c.PathParam("join_code")
 
 		planRecord, err := planutil.FindPlanByJoinCode(app, joinCode)
-		if err != nil || planRecord == nil {
+		if err != nil {
+			return err
+		}
+		if planRecord == nil {
 			return c.Redirect(http.StatusSeeOther, "/family-plans")
 		}
 
-		existingMembership, _ := planutil.FindMembership(app, planRecord.Id, session.UserID)
+		existingMembership, err := planutil.FindMembership(app, planRecord.Id, session.UserID)
+		if err != nil {
+			return err
+		}
 		if !planutil.IsOwner(planRecord, session.UserID) && existingMembership == nil {
 			return c.Redirect(http.StatusSeeOther, "/family-plans")
 		}
@@ -41,13 +47,18 @@ func HandleClaimPayment(app *pocketbase.PocketBase) echo.HandlerFunc {
 			return err
 		}
 
+		notes, err := normalizeNotes(c.FormValue("notes"))
+		if err != nil {
+			return c.Redirect(http.StatusSeeOther, "/"+joinCode)
+		}
+
 		payment := pbmodels.NewRecord(paymentsCollection)
 		payment.Set("plan_id", planRecord.Id)
 		payment.Set("user_id", session.UserID)
 		payment.Set("amount", amount)
 		payment.Set("date", time.Now())
 		payment.Set("status", "pending")
-		payment.Set("notes", c.FormValue("notes"))
+		payment.Set("notes", notes)
 
 		if forMonth := parseForMonth(c.FormValue("for_month")); forMonth != "" {
 			payment.Set("for_month", forMonth)

@@ -23,7 +23,10 @@ func HandleJoinPlan(app *pocketbase.PocketBase) echo.HandlerFunc {
 		}
 
 		planRecord, err := planutil.FindPlanByJoinCode(app, joinCode)
-		if err != nil || planRecord == nil {
+		if err != nil {
+			return err
+		}
+		if planRecord == nil {
 			return c.Redirect(http.StatusSeeOther, "/family-plans")
 		}
 
@@ -31,12 +34,18 @@ func HandleJoinPlan(app *pocketbase.PocketBase) echo.HandlerFunc {
 			return redirectToPlan(c, joinCode)
 		}
 
-		existingMembership, _ := planutil.FindMembership(app, planRecord.Id, session.UserID)
+		existingMembership, err := planutil.FindMembership(app, planRecord.Id, session.UserID)
+		if err != nil {
+			return err
+		}
 		if existingMembership != nil {
 			return redirectToPlan(c, joinCode)
 		}
 
-		existingRequest, _ := planutil.FindJoinRequest(app, planRecord.Id, session.UserID)
+		existingRequest, err := planutil.FindJoinRequest(app, planRecord.Id, session.UserID)
+		if err != nil {
+			return err
+		}
 		if existingRequest == nil {
 			joinRequestsCollection, err := app.Dao().FindCollectionByNameOrId("join_requests")
 			if err != nil {

@@ -21,7 +21,10 @@ func HandleRemoveMember(app *pocketbase.PocketBase) echo.HandlerFunc {
 		memberID := c.FormValue("user_id")
 
 		planRecord, err := planutil.FindPlanByJoinCode(app, joinCode)
-		if err != nil || planRecord == nil {
+		if err != nil {
+			return err
+		}
+		if planRecord == nil {
 			return c.Redirect(http.StatusSeeOther, "/family-plans")
 		}
 
@@ -30,7 +33,10 @@ func HandleRemoveMember(app *pocketbase.PocketBase) echo.HandlerFunc {
 		}
 
 		membership, err := planutil.FindMembership(app, planRecord.Id, memberID)
-		if err != nil || membership == nil {
+		if err != nil {
+			return err
+		}
+		if membership == nil {
 			return c.Redirect(http.StatusSeeOther, "/"+joinCode)
 		}
 

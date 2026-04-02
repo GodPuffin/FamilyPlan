@@ -28,7 +28,10 @@ func HandleTransferMembership(app *pocketbase.PocketBase) echo.HandlerFunc {
 		}
 
 		planRecord, err := planutil.FindPlanByJoinCode(app, joinCode)
-		if err != nil || planRecord == nil {
+		if err != nil {
+			return err
+		}
+		if planRecord == nil {
 			return c.Redirect(http.StatusSeeOther, "/family-plans")
 		}
 
@@ -80,6 +83,24 @@ func HandleTransferMembership(app *pocketbase.PocketBase) echo.HandlerFunc {
 				requestFilter.Params,
 			)
 			if err != nil || request == nil {
+				return missingTransferPrerequisite
+			}
+
+			usersCollection, err := txDao.FindCollectionByNameOrId("users")
+			if err != nil {
+				return err
+			}
+
+			realUserRecord, err := txDao.FindRecordById(usersCollection.Id, realUserID)
+			if err != nil || realUserRecord == nil {
+				return missingTransferPrerequisite
+			}
+
+			existingRealMembership, err := planutil.FindMembershipWithDao(txDao, planRecord.Id, realUserID)
+			if err != nil {
+				return err
+			}
+			if existingRealMembership != nil {
 				return missingTransferPrerequisite
 			}
 

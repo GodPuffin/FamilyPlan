@@ -29,3 +29,27 @@ func TestMemberShareCentsDistributesRemainderDeterministically(t *testing.T) {
 		t.Fatalf("member-b share = %d, want 500", got)
 	}
 }
+
+func TestApplyAttributedPaymentRemovesUnallocatedCredit(t *testing.T) {
+	t.Parallel()
+
+	totalPaidCents, amountDueCents := applyAttributedPayment(1000, 1000, 1000)
+
+	if totalPaidCents != 0 {
+		t.Fatalf("total paid after attribution = %d, want 0", totalPaidCents)
+	}
+
+	if amountDueCents != 0 {
+		t.Fatalf("amount due after attribution = %d, want 0", amountDueCents)
+	}
+}
+
+func TestApplyAttributedPaymentPreservesNetBalance(t *testing.T) {
+	t.Parallel()
+
+	totalPaidCents, amountDueCents := applyAttributedPayment(1500, 1000, 1200)
+
+	if got, want := totalPaidCents-amountDueCents, int64(500); got != want {
+		t.Fatalf("net balance = %d, want %d", got, want)
+	}
+}

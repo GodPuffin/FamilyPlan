@@ -6,12 +6,17 @@ import (
 	"familyplan/src/internal/planutil"
 
 	"github.com/pocketbase/pocketbase"
+	"github.com/pocketbase/pocketbase/daos"
 	pbmodels "github.com/pocketbase/pocketbase/models"
 )
 
 // GetActiveMembershipsForMonth returns memberships that were active for the target month.
 func GetActiveMembershipsForMonth(app *pocketbase.PocketBase, planID string, targetMonth time.Time) ([]*pbmodels.Record, error) {
-	membershipsCollection, err := app.Dao().FindCollectionByNameOrId("memberships")
+	return getActiveMembershipsForMonth(app.Dao(), planID, targetMonth)
+}
+
+func getActiveMembershipsForMonth(dao *daos.Dao, planID string, targetMonth time.Time) ([]*pbmodels.Record, error) {
+	membershipsCollection, err := dao.FindCollectionByNameOrId("memberships")
 	if err != nil {
 		return nil, err
 	}
@@ -23,7 +28,7 @@ func GetActiveMembershipsForMonth(app *pocketbase.PocketBase, planID string, tar
 		return nil, err
 	}
 
-	allMemberships, err := app.Dao().FindRecordsByFilter(
+	allMemberships, err := dao.FindRecordsByFilter(
 		membershipsCollection.Id,
 		filter.Expression,
 		"",

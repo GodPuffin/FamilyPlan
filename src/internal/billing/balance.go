@@ -9,28 +9,37 @@ import (
 	"familyplan/src/internal/planutil"
 
 	"github.com/pocketbase/pocketbase"
+	"github.com/pocketbase/pocketbase/daos"
 )
 
 // CalculateMemberBalance calculates the current balance for a member.
 func CalculateMemberBalance(app *pocketbase.PocketBase, planID, userID string) (float64, error) {
-	plansCollection, err := app.Dao().FindCollectionByNameOrId("family_plans")
+	return CalculateMemberBalanceWithDao(app.Dao(), planID, userID)
+}
+
+// CalculateMemberBalanceWithDao calculates the current balance using the provided dao.
+func CalculateMemberBalanceWithDao(dao *daos.Dao, planID, userID string) (float64, error) {
+	plansCollection, err := dao.FindCollectionByNameOrId("family_plans")
 	if err != nil {
 		return 0, err
 	}
 
-	plan, err := app.Dao().FindRecordById(plansCollection.Id, planID)
+	plan, err := dao.FindRecordById(plansCollection.Id, planID)
 	if err != nil {
 		return 0, err
 	}
 
 	monthlyCostCents := money.ToCents(plan.GetFloat("cost"))
 
-	membership, err := planutil.FindMembership(app, planID, userID)
-	if err != nil || membership == nil {
+	membership, err := planutil.FindMembershipWithDao(dao, planID, userID)
+	if err != nil {
+		return 0, err
+	}
+	if membership == nil {
 		return 0, fmt.Errorf("membership not found")
 	}
 
-	paymentsCollection, err := app.Dao().FindCollectionByNameOrId("payments")
+	paymentsCollection, err := dao.FindCollectionByNameOrId("payments")
 	if err != nil {
 		return 0, err
 	}
@@ -44,7 +53,7 @@ func CalculateMemberBalance(app *pocketbase.PocketBase, planID, userID string) (
 		return 0, err
 	}
 
-	userPayments, err := app.Dao().FindRecordsByFilter(
+	userPayments, err := dao.FindRecordsByFilter(
 		paymentsCollection.Id,
 		filter.Expression,
 		"",
@@ -71,12 +80,7 @@ func CalculateMemberBalance(app *pocketbase.PocketBase, planID, userID string) (
 	}
 
 	membershipStartDate := membership.GetDateTime("created").Time()
-	currentDate := time.Now()
-
 	membershipEndDate := membership.GetDateTime("date_ended")
-	if !membershipEndDate.IsZero() {
-		currentDate = membershipEndDate.Time()
-	}
 
 	startMonth := time.Date(
 		membershipStartDate.Year(),
@@ -102,15 +106,16 @@ func CalculateMemberBalance(app *pocketbase.PocketBase, planID, userID string) (
 			membershipEndDate.Time().Location(),
 		)
 	} else {
+		now := time.Now()
 		endMonth = time.Date(
-			currentDate.Year(),
-			currentDate.Month(),
+			now.Year(),
+			now.Month(),
 			1,
 			0,
 			0,
 			0,
 			0,
-			currentDate.Location(),
+			now.Location(),
 		)
 	}
 
@@ -120,38 +125,44 @@ func CalculateMemberBalance(app *pocketbase.PocketBase, planID, userID string) (
 	for !currentMonth.After(endMonth) {
 		monthKey := currentMonth.Format("2006-01")
 
-		activeMemberships, err := GetActiveMembershipsForMonth(app, planID, currentMonth)
-		if err == nil {
-			memberIDs := make([]string, 0, len(activeMemberships)+1)
-			ownerIncluded := false
-			ownerID := planutil.OwnerID(plan)
+		activeMemberships, err := getActiveMembershipsForMonth(dao, planID, currentMonth)
+		if err != nil {
+			return 0, err
+		}
 
-			for _, activeMembership := range activeMemberships {
-				memberID := activeMembership.GetString("user_id")
-				if memberID == ownerID {
-					ownerIncluded = true
-				}
-				memberIDs = append(memberIDs, memberID)
-			}
+		memberIDs := make([]string, 0, len(activeMemberships)+1)
+		ownerIncluded := false
+		ownerID := planutil.OwnerID(plan)
 
-			if !ownerIncluded {
-				memberIDs = append(memberIDs, ownerID)
+		for _, activeMembership := range activeMemberships {
+			memberID := activeMembership.GetString("user_id")
+			if memberID == ownerID {
+				ownerIncluded = true
 			}
+			memberIDs = append(memberIDs, memberID)
+		}
 
-			if len(memberIDs) > 0 {
-				amountDueCents += memberShareCents(monthlyCostCents, memberIDs, userID)
-			}
+		if !ownerIncluded {
+			memberIDs = append(memberIDs, ownerID)
+		}
+
+		if len(memberIDs) > 0 {
+			amountDueCents += memberShareCents(monthlyCostCents, memberIDs, userID)
 		}
 
 		if paidAmount, exists := paymentsByMonth[monthKey]; exists {
-			amountDueCents -= paidAmount
-			totalPaidCents -= paidAmount
+			totalPaidCents, amountDueCents = applyAttributedPayment(totalPaidCents, amountDueCents, paidAmount)
 		}
 
 		currentMonth = currentMonth.AddDate(0, 1, 0)
 	}
 
 	return money.FromCents(totalPaidCents - amountDueCents), nil
+}
+
+func applyAttributedPayment(totalPaidCents, amountDueCents, paidAmount int64) (int64, int64) {
+	// Month-attributed payments settle that month's charge and stop counting as unallocated credit.
+	return totalPaidCents - paidAmount, amountDueCents - paidAmount
 }
 
 func memberShareCents(totalCents int64, memberIDs []string, userID string) int64 {
@@ -182,21 +193,32 @@ func memberShareCents(totalCents int64, memberIDs []string, userID string) int64
 
 // EndMembershipIfSettled ends a leave-requested membership once its balance is settled.
 func EndMembershipIfSettled(app *pocketbase.PocketBase, planID, userID string, endedAt time.Time) error {
-	membership, err := planutil.FindMembership(app, planID, userID)
-	if err != nil || membership == nil {
+	return EndMembershipIfSettledWithDao(app.Dao(), planID, userID, endedAt)
+}
+
+// EndMembershipIfSettledWithDao ends a leave-requested membership using the provided dao.
+func EndMembershipIfSettledWithDao(dao *daos.Dao, planID, userID string, endedAt time.Time) error {
+	membership, err := planutil.FindMembershipWithDao(dao, planID, userID)
+	if err != nil {
 		return err
+	}
+	if membership == nil {
+		return fmt.Errorf("membership not found")
 	}
 
 	if !membership.GetBool("leave_requested") {
 		return nil
 	}
 
-	balance, err := CalculateMemberBalance(app, planID, userID)
-	if err != nil || balance < 0 {
+	balance, err := CalculateMemberBalanceWithDao(dao, planID, userID)
+	if err != nil {
 		return err
+	}
+	if balance < 0 {
+		return nil
 	}
 
 	membership.Set("date_ended", endedAt)
 	membership.Set("leave_requested", false)
-	return app.Dao().SaveRecord(membership)
+	return dao.SaveRecord(membership)
 }

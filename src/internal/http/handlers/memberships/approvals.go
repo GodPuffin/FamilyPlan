@@ -22,7 +22,10 @@ func HandleApproveRequest(app *pocketbase.PocketBase) echo.HandlerFunc {
 		userID := c.FormValue("user_id")
 
 		planRecord, err := planutil.FindPlanByJoinCode(app, joinCode)
-		if err != nil || planRecord == nil {
+		if err != nil {
+			return err
+		}
+		if planRecord == nil {
 			return c.Redirect(http.StatusSeeOther, "/family-plans")
 		}
 
@@ -31,7 +34,10 @@ func HandleApproveRequest(app *pocketbase.PocketBase) echo.HandlerFunc {
 		}
 
 		request, err := planutil.FindJoinRequest(app, planRecord.Id, userID)
-		if err != nil || request == nil {
+		if err != nil {
+			return err
+		}
+		if request == nil {
 			return c.Redirect(http.StatusSeeOther, "/"+joinCode)
 		}
 
@@ -85,7 +91,10 @@ func HandleDenyRequest(app *pocketbase.PocketBase) echo.HandlerFunc {
 		userID := c.FormValue("user_id")
 
 		planRecord, err := planutil.FindPlanByJoinCode(app, joinCode)
-		if err != nil || planRecord == nil {
+		if err != nil {
+			return err
+		}
+		if planRecord == nil {
 			return c.Redirect(http.StatusSeeOther, "/family-plans")
 		}
 
@@ -94,7 +103,10 @@ func HandleDenyRequest(app *pocketbase.PocketBase) echo.HandlerFunc {
 		}
 
 		request, err := planutil.FindJoinRequest(app, planRecord.Id, userID)
-		if err != nil || request == nil {
+		if err != nil {
+			return err
+		}
+		if request == nil {
 			return c.Redirect(http.StatusSeeOther, "/"+joinCode)
 		}
 

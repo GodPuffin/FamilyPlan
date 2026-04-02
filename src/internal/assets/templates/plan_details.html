@@ -994,8 +994,7 @@
               required
             />
             <p class="text-xs text-gray-600 mt-1">
-              Positive values add to the member's balance, negative values
-              subtract from it.
+              Enter the amount the member paid toward this plan.
             </p>
           </div>
           <div class="mb-6">
@@ -1008,6 +1007,7 @@
               id="manualNotes"
               name="notes"
               rows="2"
+              maxlength="500"
               class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
             ></textarea>
           </div>
@@ -1081,6 +1081,7 @@
               id="notes"
               name="notes"
               rows="2"
+              maxlength="500"
               class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
             ></textarea>
           </div>
@@ -1137,6 +1138,7 @@
               type="text"
               id="memberName"
               name="name"
+              maxlength="80"
               class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
               required
             />

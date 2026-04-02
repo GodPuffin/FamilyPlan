@@ -1,6 +1,7 @@
 package payments
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 
 	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/pocketbase"
+	"github.com/pocketbase/pocketbase/daos"
 )
 
 // HandleApprovePayment approves a pending payment.
@@ -22,7 +24,10 @@ func HandleApprovePayment(app *pocketbase.PocketBase) echo.HandlerFunc {
 		paymentID := c.FormValue("payment_id")
 
 		planRecord, err := planutil.FindPlanByJoinCode(app, joinCode)
-		if err != nil || planRecord == nil {
+		if err != nil {
+			return err
+		}
+		if planRecord == nil {
 			return c.Redirect(http.StatusSeeOther, "/family-plans")
 		}
 
@@ -35,21 +40,28 @@ func HandleApprovePayment(app *pocketbase.PocketBase) echo.HandlerFunc {
 			return err
 		}
 
-		payment, err := app.Dao().FindRecordById(paymentsCollection.Id, paymentID)
-		if err != nil || payment == nil {
-			return c.Redirect(http.StatusSeeOther, "/"+joinCode)
-		}
+		paymentNotApprovable := errors.New("payment is not approvable")
+		err = app.Dao().RunInTransaction(func(txDao *daos.Dao) error {
+			payment, err := txDao.FindRecordById(paymentsCollection.Id, paymentID)
+			if err != nil || payment == nil {
+				return paymentNotApprovable
+			}
 
-		if payment.GetString("plan_id") != planRecord.Id || payment.GetString("status") != "pending" {
-			return c.Redirect(http.StatusSeeOther, "/"+joinCode)
-		}
+			if payment.GetString("plan_id") != planRecord.Id || payment.GetString("status") != "pending" {
+				return paymentNotApprovable
+			}
 
-		payment.Set("status", "approved")
-		if err := app.Dao().SaveRecord(payment); err != nil {
-			return err
-		}
+			payment.Set("status", "approved")
+			if err := txDao.SaveRecord(payment); err != nil {
+				return err
+			}
 
-		if err := billing.EndMembershipIfSettled(app, planRecord.Id, payment.GetString("user_id"), time.Now()); err != nil {
+			return billing.EndMembershipIfSettledWithDao(txDao, planRecord.Id, payment.GetString("user_id"), time.Now())
+		})
+		if err != nil {
+			if errors.Is(err, paymentNotApprovable) {
+				return c.Redirect(http.StatusSeeOther, "/"+joinCode)
+			}
 			return err
 		}
 

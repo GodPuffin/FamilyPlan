@@ -27,6 +27,9 @@ func Run() error {
 	app.Settings().Meta.HideControls = true
 	app.Settings().Logs.MaxDays = 7
 	app.Settings().Smtp.Enabled = false
+	if err := app.Dao().SaveSettings(app.Settings()); err != nil {
+		return err
+	}
 
 	app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
 		e.Router.GET("/static/*", apis.StaticDirectoryHandler(assets.StaticFS, false))
