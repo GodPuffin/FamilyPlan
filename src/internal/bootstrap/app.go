@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"familyplan/src/internal/assets"
 	"familyplan/src/internal/http/router"
+	"io/fs"
 	"os"
 	"strings"
 
@@ -33,7 +34,12 @@ func Run() error {
 	app.Settings().Smtp.Enabled = false
 
 	app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
-		e.Router.GET("/static/*", apis.StaticDirectoryHandler(assets.StaticFS, false))
+		staticFS, err := fs.Sub(assets.StaticFS, "static")
+		if err != nil {
+			return err
+		}
+
+		e.Router.GET("/static/*", apis.StaticDirectoryHandler(staticFS, false))
 		router.Setup(app, e.Router)
 		return nil
 	})

@@ -116,7 +116,7 @@
             _="on htmx:afterRequest
                if event.detail.successful
                  add .hidden to #profileModal
-                 window.location.reload()
+                 reload() the location of the window
                end
                end"
             class="space-y-4"

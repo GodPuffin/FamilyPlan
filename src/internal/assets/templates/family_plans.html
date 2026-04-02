@@ -107,7 +107,8 @@
       _="on htmx:afterRequest
          add .hidden to #createPlanModal
          if event.detail.successful
-         window.location.href = '/family-plans'
+           go to url '/family-plans'
+         end
          end"
     >
       <div class="mb-4">
@@ -231,7 +232,8 @@
       _="on htmx:afterRequest
          add .hidden to #joinPlanModal
          if event.detail.successful
-         window.location.href = '/family-plans'
+           go to url '/family-plans'
+         end
          end"
     >
       <div class="mb-6">
