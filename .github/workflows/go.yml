@@ -5,41 +5,72 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: go-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v6
 
     - name: Set up Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v6
       with:
-        go-version: '1.21'
+        go-version-file: go.mod
         cache: true
 
-    - name: Install dependencies
-      run: go mod tidy
+    - name: Verify module files
+      run: |
+        go mod tidy
+        git diff --exit-code -- go.mod go.sum
 
     - name: Build
       run: go build -v ./...
 
     - name: Test
-      run: go test -v ./...
+      run: go test -v -covermode=atomic -coverprofile=coverage.out ./...
+
+    - name: Summarize coverage
+      run: |
+        go tool cover -func=coverage.out | tee coverage.txt
+        total=$(tail -n1 coverage.txt | awk '{print $3}')
+        {
+          echo "## Go Coverage"
+          echo
+          echo "Total statement coverage: \`${total}\`"
+        } >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Upload coverage report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: go-coverage
+        path: |
+          coverage.out
+          coverage.txt
 
   lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v6
 
     - name: Set up Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v6
       with:
-        go-version: '1.21'
+        go-version-file: go.mod
         cache: true
 
     - name: golangci-lint
-      uses: golangci/golangci-lint-action@v3
+      uses: golangci/golangci-lint-action@v9
       with:
-        version: latest
-        args: --timeout=5m0s 
+        version: v2.11.0
+        args: --timeout=5m
