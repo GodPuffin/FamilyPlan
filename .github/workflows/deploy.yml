@@ -16,10 +16,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: '1.21'
 
@@ -37,10 +37,46 @@ jobs:
           
       - name: Transfer application files
         run: rsync -avz --exclude 'pb_data' --exclude '.git' ./ ${{ env.SSH_USER }}@${{ env.SSH_HOST }}:/var/www/familyplanmanager/
+
+      - name: Update systemd service
+        run: |
+          ssh ${{ env.SSH_USER }}@${{ env.SSH_HOST }} "cat > /etc/systemd/system/familyplanmanager.service << 'EOF'
+          [Unit]
+          Description=Family Plan Manager
+          After=network.target
+
+          [Service]
+          Type=simple
+          User=root
+          WorkingDirectory=/var/www/familyplanmanager
+          ExecStart=/var/www/familyplanmanager/app serve --http=0.0.0.0:8090
+          Restart=on-failure
+          RestartSec=5s
+          StandardOutput=journal
+          StandardError=journal
+
+          [Install]
+          WantedBy=multi-user.target
+          EOF
+          chmod +x /var/www/familyplanmanager/app
+          systemctl daemon-reload
+          systemctl enable familyplanmanager"
           
       - name: Restart service
         run: ssh ${{ env.SSH_USER }}@${{ env.SSH_HOST }} "systemctl restart familyplanmanager"
           
       - name: Verify application is running
         run: |
-          ssh ${{ env.SSH_USER }}@${{ env.SSH_HOST }} "systemctl status familyplanmanager"
+          ssh ${{ env.SSH_USER }}@${{ env.SSH_HOST }} '
+            for i in $(seq 1 10); do
+              if systemctl is-active --quiet familyplanmanager; then
+                systemctl status familyplanmanager --no-pager
+                exit 0
+              fi
+              sleep 2
+            done
+
+            systemctl status familyplanmanager --no-pager || true
+            journalctl -u familyplanmanager -n 100 --no-pager || true
+            exit 1
+          '

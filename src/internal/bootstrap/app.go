@@ -3,6 +3,8 @@ package bootstrap
 import (
 	"familyplan/src/internal/assets"
 	"familyplan/src/internal/http/router"
+	"os"
+	"strings"
 
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/apis"
@@ -14,6 +16,8 @@ import (
 
 // Run boots the PocketBase app and starts serving HTTP traffic.
 func Run() error {
+	defaultToServeCommand()
+
 	app := pocketbase.New()
 
 	migratecmd.MustRegister(app, app.RootCmd, migratecmd.Config{
@@ -27,9 +31,6 @@ func Run() error {
 	app.Settings().Meta.HideControls = true
 	app.Settings().Logs.MaxDays = 7
 	app.Settings().Smtp.Enabled = false
-	if err := app.Dao().SaveSettings(app.Settings()); err != nil {
-		return err
-	}
 
 	app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
 		e.Router.GET("/static/*", apis.StaticDirectoryHandler(assets.StaticFS, false))
@@ -38,4 +39,43 @@ func Run() error {
 	})
 
 	return app.Start()
+}
+
+// defaultToServeCommand preserves explicit PocketBase subcommands but restores
+// the historical "run the server by default" behavior for bare binary launches.
+func defaultToServeCommand() {
+	args := os.Args[1:]
+	if len(args) == 0 {
+		os.Args = []string{os.Args[0], "serve"}
+		return
+	}
+
+	flagsWithValue := map[string]struct{}{
+		"--dir":           {},
+		"--encryptionEnv": {},
+		"--http":          {},
+		"--https":         {},
+		"--origins":       {},
+	}
+
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+
+		switch arg {
+		case "-h", "--help", "-v", "--version":
+			return
+		}
+
+		if !strings.HasPrefix(arg, "-") {
+			return
+		}
+
+		if equalsIndex := strings.Index(arg, "="); equalsIndex > 0 {
+			arg = arg[:equalsIndex]
+		} else if _, ok := flagsWithValue[arg]; ok && i+1 < len(args) {
+			i++
+		}
+	}
+
+	os.Args = append([]string{os.Args[0], "serve"}, args...)
 }
