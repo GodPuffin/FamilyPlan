@@ -2,6 +2,7 @@ package random
 
 import (
 	crand "crypto/rand"
+	"fmt"
 	"math/big"
 
 	"github.com/google/uuid"
@@ -30,6 +31,13 @@ func GenerateUUID() (string, error) {
 }
 
 func secureString(length int, charset string) (string, error) {
+	if length == 0 {
+		return "", nil
+	}
+	if charset == "" {
+		return "", fmt.Errorf("charset is empty")
+	}
+
 	value := make([]byte, length)
 	max := big.NewInt(int64(len(charset)))
 

@@ -5,13 +5,14 @@ import (
 	"testing"
 
 	"github.com/labstack/echo/v5"
+	"github.com/pocketbase/pocketbase"
 )
 
 func TestSetupRegistersExpectedRoutes(t *testing.T) {
 	t.Parallel()
 
 	e := echo.New()
-	Setup(nil, e)
+	Setup(&pocketbase.PocketBase{}, e)
 
 	expected := map[string]string{
 		http.MethodGet + " /":                            "/",

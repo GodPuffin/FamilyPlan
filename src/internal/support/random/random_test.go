@@ -66,3 +66,11 @@ func TestSecureStringSupportsZeroLength(t *testing.T) {
 		t.Fatalf("secureString() = %q, want empty string", got)
 	}
 }
+
+func TestSecureStringRejectsEmptyCharset(t *testing.T) {
+	t.Parallel()
+
+	if _, err := secureString(5, ""); err == nil {
+		t.Fatal("expected secureString to reject an empty charset")
+	}
+}

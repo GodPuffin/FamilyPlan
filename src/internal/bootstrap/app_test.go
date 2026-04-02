@@ -38,6 +38,11 @@ func TestDefaultToServeCommand(t *testing.T) {
 			want: []string{"app", "--help"},
 		},
 		{
+			name: "version flag is preserved",
+			args: []string{"app", "--version"},
+			want: []string{"app", "--version"},
+		},
+		{
 			name: "existing serve command is preserved",
 			args: []string{"app", "serve", "--http=127.0.0.1:8090"},
 			want: []string{"app", "serve", "--http=127.0.0.1:8090"},

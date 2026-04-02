@@ -14,6 +14,7 @@ import (
 
 func TestRenderPageUsesSessionDefaults(t *testing.T) {
 	resetTemplateCache()
+	t.Cleanup(resetTemplateCache)
 
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -45,6 +46,7 @@ func TestRenderPageUsesSessionDefaults(t *testing.T) {
 
 func TestRenderPagePreservesProvidedValues(t *testing.T) {
 	resetTemplateCache()
+	t.Cleanup(resetTemplateCache)
 
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -75,6 +77,7 @@ func TestRenderPagePreservesProvidedValues(t *testing.T) {
 
 func TestRenderPageReturnsTemplateErrorForMissingPage(t *testing.T) {
 	resetTemplateCache()
+	t.Cleanup(resetTemplateCache)
 
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -88,6 +91,7 @@ func TestRenderPageReturnsTemplateErrorForMissingPage(t *testing.T) {
 
 func TestLoadTemplateCachesTemplates(t *testing.T) {
 	resetTemplateCache()
+	t.Cleanup(resetTemplateCache)
 
 	first, err := loadTemplate("index.html")
 	if err != nil {
