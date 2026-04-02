@@ -2,6 +2,8 @@ package profile
 
 import (
 	"net/http"
+	"strings"
+	"unicode/utf8"
 
 	"familyplan/src/internal/domain"
 	"familyplan/src/internal/view"
@@ -10,13 +12,12 @@ import (
 	"github.com/pocketbase/pocketbase"
 )
 
+const maxDisplayNameLength = 80
+
 // HandleProfilePage renders the profile page.
 func HandleProfilePage(app *pocketbase.PocketBase) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		session := c.Get("session").(domain.SessionData)
-		if !session.IsAuthenticated {
-			return c.Redirect(http.StatusSeeOther, "/login")
-		}
 
 		authCollection, err := app.Dao().FindCollectionByNameOrId("users")
 		if err != nil {
@@ -41,12 +42,6 @@ func HandleProfilePage(app *pocketbase.PocketBase) echo.HandlerFunc {
 func HandleProfileUpdate(app *pocketbase.PocketBase) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		session := c.Get("session").(domain.SessionData)
-		if !session.IsAuthenticated {
-			return c.JSON(http.StatusUnauthorized, map[string]interface{}{
-				"success": false,
-				"message": "Not authenticated",
-			})
-		}
 
 		authCollection, err := app.Dao().FindCollectionByNameOrId("users")
 		if err != nil {
@@ -64,7 +59,21 @@ func HandleProfileUpdate(app *pocketbase.PocketBase) echo.HandlerFunc {
 			})
 		}
 
-		name := c.FormValue("name")
+		name := strings.TrimSpace(c.FormValue("name"))
+		if name == "" {
+			return c.JSON(http.StatusBadRequest, map[string]interface{}{
+				"success": false,
+				"message": "Display name is required",
+			})
+		}
+
+		if utf8.RuneCountInString(name) > maxDisplayNameLength {
+			return c.JSON(http.StatusBadRequest, map[string]interface{}{
+				"success": false,
+				"message": "Display name must be 80 characters or fewer",
+			})
+		}
+
 		authRecord.Set("name", name)
 		if err := app.Dao().SaveRecord(authRecord); err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]interface{}{

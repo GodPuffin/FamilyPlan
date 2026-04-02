@@ -97,6 +97,7 @@ func paymentIdentity(app *pocketbase.PocketBase, planID, userID string) (string,
 	filter, err := planutil.BuildEqualsFilter(
 		planutil.FilterTerm{Field: "plan_id", Value: planID},
 		planutil.FilterTerm{Field: "user_id", Value: userID},
+		planutil.FilterTerm{Field: "is_artificial", Value: "true", Literal: true},
 	)
 	if err != nil {
 		return "", "", err
@@ -104,7 +105,7 @@ func paymentIdentity(app *pocketbase.PocketBase, planID, userID string) (string,
 
 	artificialMembership, _ := app.Dao().FindFirstRecordByFilter(
 		membershipsCollection.Id,
-		filter+" && is_artificial = true",
+		filter,
 	)
 	if artificialMembership != nil {
 		return "", artificialMembership.GetString("name"), nil

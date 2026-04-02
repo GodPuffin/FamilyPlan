@@ -41,6 +41,7 @@ func HandleTransferMembership(app *pocketbase.PocketBase) echo.HandlerFunc {
 		artificialMembershipFilter, err := planutil.BuildEqualsFilter(
 			planutil.FilterTerm{Field: "plan_id", Value: planRecord.Id},
 			planutil.FilterTerm{Field: "user_id", Value: artificialMemberID},
+			planutil.FilterTerm{Field: "is_artificial", Value: "true", Literal: true},
 		)
 		if err != nil {
 			return err
@@ -48,7 +49,7 @@ func HandleTransferMembership(app *pocketbase.PocketBase) echo.HandlerFunc {
 
 		artificialMembership, err := app.Dao().FindFirstRecordByFilter(
 			membershipsCollection.Id,
-			artificialMembershipFilter+" && is_artificial = true",
+			artificialMembershipFilter,
 		)
 		if err != nil || artificialMembership == nil {
 			return c.Redirect(http.StatusSeeOther, "/"+joinCode)

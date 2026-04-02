@@ -3,10 +3,10 @@ package memberships
 import (
 	"fmt"
 	"net/http"
-	"time"
 
 	"familyplan/src/internal/domain"
 	"familyplan/src/internal/planutil"
+	"familyplan/src/internal/support/random"
 
 	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/pocketbase"
@@ -38,7 +38,12 @@ func HandleAddArtificialMember(app *pocketbase.PocketBase) echo.HandlerFunc {
 			return err
 		}
 
-		artificialUserID := fmt.Sprintf("artificial_%s_%d", planRecord.Id, time.Now().UnixNano())
+		token, err := random.GenerateToken()
+		if err != nil {
+			return err
+		}
+
+		artificialUserID := fmt.Sprintf("artificial_%s_%s", planRecord.Id, token)
 
 		newMembership := pbmodels.NewRecord(membershipsCollection)
 		newMembership.Set("plan_id", planRecord.Id)

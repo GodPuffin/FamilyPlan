@@ -1,6 +1,7 @@
 package plans
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -9,6 +10,7 @@ import (
 
 	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/pocketbase"
+	"github.com/pocketbase/pocketbase/daos"
 	pbmodels "github.com/pocketbase/pocketbase/models"
 )
 
@@ -36,33 +38,44 @@ func HandleCreateFamilyPlan(app *pocketbase.PocketBase) echo.HandlerFunc {
 			return c.Redirect(http.StatusSeeOther, "/family-plans")
 		}
 
-		plansCollection, err := app.Dao().FindCollectionByNameOrId("family_plans")
+		joinCode := random.GenerateJoinCode(6)
+		if joinCode == "" {
+			return errors.New("failed to generate join code")
+		}
+
+		err = app.Dao().RunInTransaction(func(txDao *daos.Dao) error {
+			plansCollection, err := txDao.FindCollectionByNameOrId("family_plans")
+			if err != nil {
+				return err
+			}
+
+			newPlan := pbmodels.NewRecord(plansCollection)
+			newPlan.Set("name", name)
+			newPlan.Set("description", description)
+			newPlan.Set("cost", cost)
+			newPlan.Set("individual_cost", individualCost)
+			newPlan.Set("owner", []string{session.UserID})
+			newPlan.Set("join_code", joinCode)
+
+			if err := txDao.SaveRecord(newPlan); err != nil {
+				return err
+			}
+
+			membershipsCollection, err := txDao.FindCollectionByNameOrId("memberships")
+			if err != nil {
+				return err
+			}
+
+			newMembership := pbmodels.NewRecord(membershipsCollection)
+			newMembership.Set("plan_id", newPlan.Id)
+			newMembership.Set("user_id", session.UserID)
+			newMembership.Set("is_artificial", false)
+
+			return txDao.SaveRecord(newMembership)
+		})
 		if err != nil {
 			return err
 		}
-
-		newPlan := pbmodels.NewRecord(plansCollection)
-		newPlan.Set("name", name)
-		newPlan.Set("description", description)
-		newPlan.Set("cost", cost)
-		newPlan.Set("individual_cost", individualCost)
-		newPlan.Set("owner", []string{session.UserID})
-		newPlan.Set("join_code", random.GenerateJoinCode(6))
-
-		if err := app.Dao().SaveRecord(newPlan); err != nil {
-			return err
-		}
-
-		membershipsCollection, err := app.Dao().FindCollectionByNameOrId("memberships")
-		if err != nil {
-			return err
-		}
-
-		newMembership := pbmodels.NewRecord(membershipsCollection)
-		newMembership.Set("plan_id", newPlan.Id)
-		newMembership.Set("user_id", session.UserID)
-		newMembership.Set("is_artificial", false)
-		_ = app.Dao().SaveRecord(newMembership)
 
 		return c.Redirect(http.StatusSeeOther, "/family-plans")
 	}

@@ -8,8 +8,9 @@ import (
 
 // FilterTerm defines a single equality clause in a PocketBase filter.
 type FilterTerm struct {
-	Field string
-	Value string
+	Field   string
+	Value   string
+	Literal bool
 }
 
 var safeFilterValuePattern = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
@@ -19,6 +20,15 @@ func BuildEqualsFilter(terms ...FilterTerm) (string, error) {
 	parts := make([]string, 0, len(terms))
 
 	for _, term := range terms {
+		if term.Literal {
+			if err := validateFilterLiteral(term.Field, term.Value); err != nil {
+				return "", err
+			}
+
+			parts = append(parts, fmt.Sprintf("%s = %s", term.Field, term.Value))
+			continue
+		}
+
 		if err := validateFilterValue(term.Field, term.Value); err != nil {
 			return "", err
 		}
@@ -36,6 +46,15 @@ func BuildContainsFilter(field, value string) (string, error) {
 	}
 
 	return fmt.Sprintf("%s ~ '%s'", field, value), nil
+}
+
+func validateFilterLiteral(field, value string) error {
+	switch value {
+	case "true", "false":
+		return nil
+	default:
+		return fmt.Errorf("%s literal is unsupported", field)
+	}
 }
 
 func validateFilterValue(field, value string) error {

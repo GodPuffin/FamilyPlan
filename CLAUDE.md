@@ -14,7 +14,7 @@ Family Plan Manager is a Go web application for managing shared subscription pla
 
 ```bash
 # Standard run
-go run main.go
+go run ./src/cmd/server
 # or
 make run
 
@@ -96,15 +96,17 @@ The schema is managed through migrations in `migrations/` directory:
 ### Request Flow
 
 ```
-main.go
+src/cmd/server/main.go
   ↓
-setupRoutes (routes.go) - registers all HTTP routes
+bootstrap.Run (src/internal/bootstrap/app.go) - initializes PocketBase and hooks
   ↓
-Auth middleware (auth_handlers.go) - validates cookie and sets session context
+router.Setup (src/internal/http/router/router.go) - registers HTTP routes
   ↓
-Handler functions (auth_handlers.go, plan_handlers.go)
+Auth middleware (src/internal/http/middleware/auth.go) - validates cookie and sets session context
   ↓
-Business logic (plan_actions.go) - complex operations like balance calculations
+Handler functions (src/internal/http/handlers/*)
+  ↓
+Business logic helpers (src/internal/billing, src/internal/planutil)
   ↓
 PocketBase DAO - database operations
 ```
@@ -119,7 +121,7 @@ Custom cookie-based auth instead of PocketBase's default JWT:
 
 ### Balance Calculation Logic
 
-The balance system (in `calculateMemberBalance` function in plan_actions.go) is complex:
+The balance system (in `src/internal/billing/balance.go`) is complex:
 - Calculates member balance by month-by-month analysis
 - Accounts for when members join/leave mid-month (they pay for the full month)
 - Divides plan cost by active member count for each month
@@ -130,7 +132,7 @@ The balance system (in `calculateMemberBalance` function in plan_actions.go) is 
 ### Template Rendering
 
 - Templates stored in `templates/` directory as embedded FS
-- Uses Go html/template with custom template functions (defined in template_renderer.go)
+- Uses Go html/template rendering through `src/internal/view/view.go`
 - Layout pattern: layout.html wraps page-specific templates
 - HTMX attributes in templates enable dynamic updates
 
@@ -164,7 +166,7 @@ app.Dao().SaveRecord(record)
 
 ### Transaction Pattern
 
-Use `app.Dao().RunInTransaction()` for operations that must succeed/fail together (see handleDeletePlan):
+Use `app.Dao().RunInTransaction()` for operations that must succeed/fail together (for example `src/internal/http/handlers/plans/admin.go`):
 
 ```go
 err = app.Dao().RunInTransaction(func(txDao *daos.Dao) error {
@@ -175,22 +177,28 @@ err = app.Dao().RunInTransaction(func(txDao *daos.Dao) error {
 
 ### Migration Pattern
 
-Migrations in `migrations/` use init() to self-register. Each has an up and down function. The app runs migrations automatically on startup (see migratecmd.Config in main.go).
+Migrations in `migrations/` use init() to self-register. Each has an up and down function. The app runs migrations automatically on startup (see `migratecmd.Config` in `src/internal/bootstrap/app.go`).
 
 ## File Organization
 
-- `main.go` - Entry point, PocketBase initialization, serves static files
-- `routes.go` - Route registration
-- `auth_handlers.go` - Authentication routes and middleware
-- `plan_handlers.go` - Plan viewing/listing handlers
-- `plan_actions.go` - Complex business logic (join/leave/payments/balance calculations)
-- `models.go` - Go structs for data models
-- `utils.go` - Utility functions
-- `template_renderer.go` - Custom template renderer and functions
-- `init_db.go` - Legacy manual collection initialization (no longer used with migrations)
+- `src/cmd/server/main.go` - Application entry point
+- `src/internal/bootstrap/` - PocketBase initialization and startup wiring
+- `src/internal/http/router/` - Route registration
+- `src/internal/http/middleware/` - Request middleware such as auth/session setup
+- `src/internal/http/handlers/auth/` - Authentication handlers and cookie helpers
+- `src/internal/http/handlers/profile/` - Profile page and update handlers
+- `src/internal/http/handlers/plans/` - Plan listing, creation, details, and admin handlers
+- `src/internal/http/handlers/memberships/` - Membership approval, leave, transfer, and artificial member handlers
+- `src/internal/http/handlers/payments/` - Payment claim and approval flows
+- `src/internal/billing/` - Balance and membership settlement logic
+- `src/internal/planutil/` - Shared plan lookup and safe filter helpers
+- `src/internal/domain/` - Go structs for view/domain models
+- `src/internal/view/` - Template rendering helpers
+- `src/internal/assets/` - Embedded templates and static files
+- `src/internal/support/random/` - Random token and join-code helpers
 - `migrations/*.go` - Database schema migrations
-- `templates/*.html` - HTML templates
-- `static/` - CSS, JS, images
+- `src/internal/assets/templates/*.html` - HTML templates
+- `src/internal/assets/static/` - CSS, JS, images
 
 ## Deployment Details
 
