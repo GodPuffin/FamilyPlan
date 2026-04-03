@@ -51,10 +51,18 @@ func HandlePlanDetails(app *pocketbase.PocketBase) echo.HandlerFunc {
 
 		members := []domain.Member{}
 		totalMembers := 0
+		claimLinks := map[string]string{}
 		if isMember {
 			members, totalMembers, err = loadMembers(app, familyPlan)
 			if err != nil {
 				return err
+			}
+
+			if isOwner {
+				claimLinks, err = loadMemberClaimLinks(app, planRecord.Id, c.Scheme(), c.Request().Host)
+				if err != nil {
+					return err
+				}
 			}
 		}
 
@@ -108,6 +116,7 @@ func HandlePlanDetails(app *pocketbase.PocketBase) echo.HandlerFunc {
 			"is_owner":                   isOwner,
 			"is_member":                  isMember,
 			"members":                    members,
+			"claim_links":                claimLinks,
 			"total_members":              totalMembers,
 			"join_requests":              joinRequests,
 			"pending_request":            pendingRequest,
