@@ -1,5 +1,6 @@
 package plans
 
+import "familyplan/src/internal/domain"
 import "strconv"
 
 const (
@@ -16,21 +17,17 @@ func memberPaymentsPage(raw string) int {
 	return page
 }
 
-func buildMemberPaymentsPagination(page int, hasNext bool) map[string]interface{} {
-	if page < 1 {
-		page = 1
-	}
-
+func buildMemberPaymentsPagination(page int, hasNext bool) domain.MemberPaymentsPagination {
 	prevPage := 1
 	if page > 1 {
 		prevPage = page - 1
 	}
 
-	return map[string]interface{}{
-		"CurrentPage": page,
-		"HasPrev":     page > 1,
-		"PrevPage":    prevPage,
-		"HasNext":     hasNext,
-		"NextPage":    page + 1,
+	return domain.MemberPaymentsPagination{
+		CurrentPage: page,
+		HasPrev:     page > 1,
+		PrevPage:    prevPage,
+		HasNext:     hasNext,
+		NextPage:    page + 1,
 	}
 }

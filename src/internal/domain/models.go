@@ -54,3 +54,12 @@ type Payment struct {
 	Username string  `json:"username"`
 	Name     string  `json:"name"`
 }
+
+// MemberPaymentsPagination describes the owner payments table pagination state.
+type MemberPaymentsPagination struct {
+	CurrentPage int  `json:"current_page"`
+	HasPrev     bool `json:"has_prev"`
+	PrevPage    int  `json:"prev_page"`
+	HasNext     bool `json:"has_next"`
+	NextPage    int  `json:"next_page"`
+}

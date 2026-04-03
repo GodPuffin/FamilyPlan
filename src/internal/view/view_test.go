@@ -185,12 +185,12 @@ func TestLoadTemplatePlanDetails(t *testing.T) {
 		"all_payments": []domain.Payment{
 			{ID: "payment-2", UserID: "member-1", Amount: 4.5, Date: "2026-04-02", Status: "approved", Name: "Member"},
 		},
-		"member_payments_pagination": map[string]interface{}{
-			"CurrentPage": 1,
-			"HasPrev":     false,
-			"PrevPage":    1,
-			"HasNext":     true,
-			"NextPage":    2,
+		"member_payments_pagination": domain.MemberPaymentsPagination{
+			CurrentPage: 1,
+			HasPrev:     false,
+			PrevPage:    1,
+			HasNext:     true,
+			NextPage:    2,
 		},
 		"total_payments":  4.5,
 		"total_savings":   24.0,

@@ -24,15 +24,37 @@ func TestMemberPaymentsPageParsesPositiveValue(t *testing.T) {
 func TestBuildMemberPaymentsPagination(t *testing.T) {
 	t.Parallel()
 
-	got := buildMemberPaymentsPagination(3, true)
+	t.Run("first page", func(t *testing.T) {
+		got := buildMemberPaymentsPagination(1, false)
 
-	if got["CurrentPage"] != 3 {
-		t.Fatalf("CurrentPage = %v, want 3", got["CurrentPage"])
-	}
-	if got["HasPrev"] != true || got["PrevPage"] != 2 {
-		t.Fatalf("unexpected prev page data: %+v", got)
-	}
-	if got["HasNext"] != true || got["NextPage"] != 4 {
-		t.Fatalf("unexpected next page data: %+v", got)
-	}
+		if got.CurrentPage != 1 {
+			t.Fatalf("CurrentPage = %d, want 1", got.CurrentPage)
+		}
+		if got.HasPrev {
+			t.Fatalf("HasPrev = %t, want false", got.HasPrev)
+		}
+		if got.PrevPage != 1 {
+			t.Fatalf("PrevPage = %d, want 1", got.PrevPage)
+		}
+		if got.HasNext {
+			t.Fatalf("HasNext = %t, want false", got.HasNext)
+		}
+		if got.NextPage != 2 {
+			t.Fatalf("NextPage = %d, want 2", got.NextPage)
+		}
+	})
+
+	t.Run("middle page", func(t *testing.T) {
+		got := buildMemberPaymentsPagination(3, true)
+
+		if got.CurrentPage != 3 {
+			t.Fatalf("CurrentPage = %d, want 3", got.CurrentPage)
+		}
+		if !got.HasPrev || got.PrevPage != 2 {
+			t.Fatalf("unexpected prev page data: %+v", got)
+		}
+		if !got.HasNext || got.NextPage != 4 {
+			t.Fatalf("unexpected next page data: %+v", got)
+		}
+	})
 }
