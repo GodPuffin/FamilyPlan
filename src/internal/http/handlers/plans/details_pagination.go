@@ -4,7 +4,7 @@ import "strconv"
 
 const (
 	memberPaymentsPageParam = "member_payments_page"
-	memberPaymentsPageSize  = 20
+	memberPaymentsPageSize  = 10
 )
 
 func memberPaymentsPage(raw string) int {
