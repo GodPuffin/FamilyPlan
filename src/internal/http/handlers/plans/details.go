@@ -69,6 +69,7 @@ func HandlePlanDetails(app *pocketbase.PocketBase) echo.HandlerFunc {
 		pendingPayments := []domain.Payment{}
 		userPayments := []domain.Payment{}
 		allPayments := []domain.Payment{}
+		memberPaymentsPagination := buildMemberPaymentsPagination(1, false)
 		if isMember {
 			if isOwner {
 				pendingPayments, err = loadPendingPayments(app, planRecord.Id)
@@ -76,7 +77,12 @@ func HandlePlanDetails(app *pocketbase.PocketBase) echo.HandlerFunc {
 					return err
 				}
 
-				allPayments, err = loadAllPayments(app, planRecord.Id)
+				allPayments, memberPaymentsPagination, err = loadAllPaymentsPage(
+					app,
+					planRecord.Id,
+					memberPaymentsPage(c.QueryParam(memberPaymentsPageParam)),
+					memberPaymentsPageSize,
+				)
 				if err != nil {
 					return err
 				}
@@ -97,22 +103,23 @@ func HandlePlanDetails(app *pocketbase.PocketBase) echo.HandlerFunc {
 		}
 
 		return view.RenderPage(c, "plan_details.html", map[string]interface{}{
-			"title":              familyPlan.Name,
-			"plan":               familyPlan,
-			"is_owner":           isOwner,
-			"is_member":          isMember,
-			"members":            members,
-			"total_members":      totalMembers,
-			"join_requests":      joinRequests,
-			"pending_request":    pendingRequest,
-			"pending_payments":   pendingPayments,
-			"user_payments":      userPayments,
-			"user_balance":       userBalance,
-			"existingMembership": existingMembership,
-			"all_payments":       allPayments,
-			"total_payments":     calculateTotalPayments(app, planRecord.Id),
-			"total_savings":      totalSavings,
-			"plan_age_days":      planAgeDays,
+			"title":                      familyPlan.Name,
+			"plan":                       familyPlan,
+			"is_owner":                   isOwner,
+			"is_member":                  isMember,
+			"members":                    members,
+			"total_members":              totalMembers,
+			"join_requests":              joinRequests,
+			"pending_request":            pendingRequest,
+			"pending_payments":           pendingPayments,
+			"user_payments":              userPayments,
+			"user_balance":               userBalance,
+			"existingMembership":         existingMembership,
+			"all_payments":               allPayments,
+			"member_payments_pagination": memberPaymentsPagination,
+			"total_payments":             calculateTotalPayments(app, planRecord.Id),
+			"total_savings":              totalSavings,
+			"plan_age_days":              planAgeDays,
 		})
 	}
 }

@@ -423,7 +423,7 @@
 
     <!-- All Member Payments Section (Only for owner) -->
     {{if .is_owner}}
-    <div class="mb-8">
+    <div id="member-payments" class="mb-8">
       <div class="flex justify-between items-center mb-4">
         <h3 class="text-lg font-semibold">Member Payments</h3>
         <button
@@ -513,8 +513,51 @@
           </tbody>
         </table>
       </div>
+      {{else if gt .member_payments_pagination.CurrentPage 1}}
+      <p class="text-sm text-gray-500 italic">
+        No member payments on page {{.member_payments_pagination.CurrentPage}}.
+      </p>
       {{else}}
       <p class="text-sm text-gray-500 italic">No member payments yet.</p>
+      {{end}}
+
+      {{if or .member_payments_pagination.HasPrev .member_payments_pagination.HasNext}}
+      <div class="mt-4 flex items-center justify-between gap-3">
+        <div class="text-sm text-gray-500">
+          Page {{.member_payments_pagination.CurrentPage}}
+        </div>
+        <div class="flex items-center gap-2">
+          {{if .member_payments_pagination.HasPrev}}
+          <a
+            href="/{{.plan.JoinCode}}?member_payments_page={{.member_payments_pagination.PrevPage}}#member-payments"
+            class="inline-flex items-center rounded border border-gray-300 px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            Previous
+          </a>
+          {{else}}
+          <span
+            class="inline-flex items-center rounded border border-gray-200 px-3 py-1 text-sm font-medium text-gray-400"
+          >
+            Previous
+          </span>
+          {{end}}
+
+          {{if .member_payments_pagination.HasNext}}
+          <a
+            href="/{{.plan.JoinCode}}?member_payments_page={{.member_payments_pagination.NextPage}}#member-payments"
+            class="inline-flex items-center rounded border border-gray-300 px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            Next
+          </a>
+          {{else}}
+          <span
+            class="inline-flex items-center rounded border border-gray-200 px-3 py-1 text-sm font-medium text-gray-400"
+          >
+            Next
+          </span>
+          {{end}}
+        </div>
+      </div>
       {{end}}
     </div>
     {{end}}
