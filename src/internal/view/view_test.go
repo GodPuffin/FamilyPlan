@@ -182,13 +182,22 @@ func TestLoadTemplatePlanDetails(t *testing.T) {
 		},
 		"user_payments":      []domain.Payment{},
 		"existingMembership": nil,
-		"all_payments":       []domain.Payment{{ID: "payment-2", UserID: "member-1", Amount: 4.5, Date: "2026-04-02", Status: "approved", Name: "Member"}},
-		"total_payments":     4.5,
-		"total_savings":      24.0,
-		"plan_age_days":      7,
-		"isAuthenticated":    true,
-		"username":           "owner",
-		"name":               "Owner",
+		"all_payments": []domain.Payment{
+			{ID: "payment-2", UserID: "member-1", Amount: 4.5, Date: "2026-04-02", Status: "approved", Name: "Member"},
+		},
+		"member_payments_pagination": map[string]interface{}{
+			"CurrentPage": 1,
+			"HasPrev":     false,
+			"PrevPage":    1,
+			"HasNext":     true,
+			"NextPage":    2,
+		},
+		"total_payments":  4.5,
+		"total_savings":   24.0,
+		"plan_age_days":   7,
+		"isAuthenticated": true,
+		"username":        "owner",
+		"name":            "Owner",
 	}
 
 	var out bytes.Buffer
@@ -203,6 +212,7 @@ func TestLoadTemplatePlanDetails(t *testing.T) {
 		"Pending Payment Claims",
 		"Join Requests",
 		"Transfer Membership",
+		"member_payments_page=2#member-payments",
 	} {
 		if !strings.Contains(rendered, expected) {
 			t.Fatalf("rendered template missing %q", expected)

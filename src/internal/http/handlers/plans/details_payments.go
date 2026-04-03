@@ -8,16 +8,33 @@ import (
 )
 
 func loadPendingPayments(app *pocketbase.PocketBase, planID string) ([]domain.Payment, error) {
-	return loadPaymentsByTerms(app, planID,
+	return loadPaymentsByTerms(app, planID, -1, 0,
 		planutil.FilterTerm{Field: "plan_id", Value: planID},
 		planutil.FilterTerm{Field: "status", Value: "pending"},
 	)
 }
 
-func loadAllPayments(app *pocketbase.PocketBase, planID string) ([]domain.Payment, error) {
-	return loadPaymentsByTerms(app, planID,
+func loadAllPaymentsPage(app *pocketbase.PocketBase, planID string, page, pageSize int) ([]domain.Payment, map[string]interface{}, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = memberPaymentsPageSize
+	}
+
+	payments, err := loadPaymentsByTerms(app, planID, pageSize+1, (page-1)*pageSize,
 		planutil.FilterTerm{Field: "plan_id", Value: planID},
 	)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	hasNext := len(payments) > pageSize
+	if hasNext {
+		payments = payments[:pageSize]
+	}
+
+	return payments, buildMemberPaymentsPagination(page, hasNext), nil
 }
 
 func loadUserPayments(app *pocketbase.PocketBase, planID, userID string) ([]domain.Payment, error) {
@@ -54,7 +71,7 @@ func loadUserPayments(app *pocketbase.PocketBase, planID, userID string) ([]doma
 	return payments, nil
 }
 
-func loadPaymentsByTerms(app *pocketbase.PocketBase, planID string, terms ...planutil.FilterTerm) ([]domain.Payment, error) {
+func loadPaymentsByTerms(app *pocketbase.PocketBase, planID string, limit, offset int, terms ...planutil.FilterTerm) ([]domain.Payment, error) {
 	paymentsCollection, err := app.Dao().FindCollectionByNameOrId("payments")
 	if err != nil {
 		return nil, err
@@ -69,8 +86,8 @@ func loadPaymentsByTerms(app *pocketbase.PocketBase, planID string, terms ...pla
 		paymentsCollection.Id,
 		filter.Expression,
 		"-created",
-		-1,
-		0,
+		limit,
+		offset,
 		filter.Params,
 	)
 	if err != nil {
