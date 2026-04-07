@@ -1,0 +1,94 @@
+{{define "content"}}
+<div class="max-w-2xl mx-auto bg-white p-8 rounded-lg shadow-md">
+  {{if .claim_invalid}}
+  <div class="text-center">
+    <h2 class="text-2xl font-bold text-gray-800 mb-3">Claim Link Unavailable</h2>
+    <p class="text-gray-600 mb-6">
+      {{if .error}}{{.error}}{{else}}This claim link is no longer available.{{end}}
+    </p>
+    <a
+      href="{{if .isAuthenticated}}/family-plans{{else}}/{{end}}"
+      class="inline-flex items-center bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+    >
+      {{if .isAuthenticated}}Back to My Plans{{else}}Back Home{{end}}
+    </a>
+  </div>
+  {{else}}
+  <div class="mb-6">
+    <h2 class="text-2xl font-bold text-gray-800 mb-2">Claim Your Membership</h2>
+    <p class="text-gray-600">
+      This link replaces the artificial member slot for
+      <span class="font-semibold">{{.member_name}}</span> in
+      <span class="font-semibold">{{.plan_name}}</span> with your real account.
+    </p>
+  </div>
+
+  {{if .error}}
+  <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6" role="alert">
+    <p>{{.error}}</p>
+  </div>
+  {{end}}
+
+  <div class="bg-gray-50 border rounded-lg p-5 mb-6">
+    <div class="grid gap-4 md:grid-cols-2">
+      <div>
+        <p class="text-xs uppercase tracking-wide text-gray-500">Plan</p>
+        <p class="text-lg font-semibold text-gray-900">{{.plan_name}}</p>
+      </div>
+      <div>
+        <p class="text-xs uppercase tracking-wide text-gray-500">Tracked Member</p>
+        <p class="text-lg font-semibold text-gray-900">{{.member_name}}</p>
+      </div>
+    </div>
+    <p class="text-sm text-gray-600 mt-4">
+      Approved payments, balance history, and the active membership slot will move over to your account.
+    </p>
+  </div>
+
+  {{if .isAuthenticated}}
+  <div class="space-y-4">
+    <p class="text-sm text-gray-600">
+      Signed in as
+      <span class="font-semibold">{{if .name}}{{.name}}{{else}}{{.username}}{{end}}</span>.
+    </p>
+
+    {{if .can_claim}}
+    <form action="/claim-member/{{.claim_token}}" method="post">
+      <button
+        type="submit"
+        class="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded"
+      >
+        Claim This Membership
+      </button>
+    </form>
+    {{else}}
+    <a
+      href="{{if .join_code}}/{{.join_code}}{{else}}/family-plans{{end}}"
+      class="inline-flex items-center bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded"
+    >
+      {{if .join_code}}View Plan{{else}}Back to My Plans{{end}}
+    </a>
+    {{end}}
+  </div>
+  {{else}}
+  <div class="flex flex-col sm:flex-row gap-3">
+    <a
+      href="/login?claim={{.claim_token}}"
+      class="flex-1 text-center bg-blue-500 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded"
+    >
+      Log In to Claim
+    </a>
+    <a
+      href="/register?claim={{.claim_token}}"
+      class="flex-1 text-center bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 px-4 rounded"
+    >
+      Register to Claim
+    </a>
+  </div>
+  <p class="text-sm text-gray-600 mt-4">
+    Use an existing account or create one first. After that, the link will finish the takeover for you.
+  </p>
+  {{end}}
+  {{end}}
+</div>
+{{end}}

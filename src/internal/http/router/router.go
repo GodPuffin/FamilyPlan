@@ -42,6 +42,8 @@ func Setup(app *pocketbase.PocketBase, e *echo.Echo) {
 	e.GET("/register", authhandlers.HandleRegisterPage())
 	e.POST("/register", authhandlers.HandleRegisterSubmit(app), authLimiter)
 	e.GET("/logout", authhandlers.HandleLogout())
+	e.GET("/claim-member/:token", memberships.HandleClaimMemberPage(app))
+	e.POST("/claim-member/:token", memberships.HandleClaimMember(app))
 
 	authenticated := e.Group("", authmw.RequireAuth)
 
@@ -62,6 +64,7 @@ func Setup(app *pocketbase.PocketBase, e *echo.Echo) {
 	authenticated.POST("/:join_code/remove-member", memberships.HandleRemoveMember(app))
 	authenticated.POST("/:join_code/leave", memberships.HandleLeavePlan(app))
 	authenticated.POST("/:join_code/add-artificial-member", memberships.HandleAddArtificialMember(app))
+	authenticated.POST("/:join_code/create-member-claim-link", memberships.HandleCreateMemberClaimLink(app))
 	authenticated.POST("/:join_code/transfer-membership", memberships.HandleTransferMembership(app))
 
 	authenticated.POST("/:join_code/claim-payment", payments.HandleClaimPayment(app))

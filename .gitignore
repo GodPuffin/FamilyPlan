@@ -20,6 +20,7 @@ familyplan
 *.out
 coverage.txt
 coverage.html
+.gocache/
 
 # Go workspace file
 go.work
@@ -44,4 +45,4 @@ Thumbs.db
 
 # Log files
 *.log
-logs/ 
+logs/

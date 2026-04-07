@@ -49,6 +49,27 @@ func TestHandleLoginPageRedirectsAuthenticatedUsers(t *testing.T) {
 	}
 }
 
+func TestHandleLoginPageRedirectsAuthenticatedUsersToClaimFlow(t *testing.T) {
+	t.Parallel()
+
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/login?claim=claim123", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.Set("session", domain.SessionData{IsAuthenticated: true})
+
+	if err := HandleLoginPage()(c); err != nil {
+		t.Fatalf("HandleLoginPage returned error: %v", err)
+	}
+
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusSeeOther)
+	}
+	if location := rec.Header().Get("Location"); location != "/claim-member/claim123" {
+		t.Fatalf("Location = %q, want %q", location, "/claim-member/claim123")
+	}
+}
+
 func TestHandleLoginPageRendersForAnonymousUsers(t *testing.T) {
 	t.Parallel()
 
@@ -64,6 +85,27 @@ func TestHandleLoginPageRendersForAnonymousUsers(t *testing.T) {
 	body := rec.Body.String()
 	if !strings.Contains(body, "Login - Family Plan Manager") || !strings.Contains(body, "bad credentials") {
 		t.Fatalf("expected login page content in response, got %q", body)
+	}
+}
+
+func TestHandleLoginPagePreservesClaimToken(t *testing.T) {
+	t.Parallel()
+
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/login?claim=claim123", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	if err := HandleLoginPage()(c); err != nil {
+		t.Fatalf("HandleLoginPage returned error: %v", err)
+	}
+
+	body := rec.Body.String()
+	if !strings.Contains(body, `name="claim" value="claim123"`) {
+		t.Fatalf("expected hidden claim field in response, got %q", body)
+	}
+	if !strings.Contains(body, `/register?claim=claim123`) {
+		t.Fatalf("expected claim-preserving register link in response, got %q", body)
 	}
 }
 
@@ -88,6 +130,27 @@ func TestHandleRegisterPageRedirectsAuthenticatedUsers(t *testing.T) {
 	}
 }
 
+func TestHandleRegisterPageRedirectsAuthenticatedUsersToClaimFlow(t *testing.T) {
+	t.Parallel()
+
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/register?claim=claim123", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.Set("session", domain.SessionData{IsAuthenticated: true})
+
+	if err := HandleRegisterPage()(c); err != nil {
+		t.Fatalf("HandleRegisterPage returned error: %v", err)
+	}
+
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusSeeOther)
+	}
+	if location := rec.Header().Get("Location"); location != "/claim-member/claim123" {
+		t.Fatalf("Location = %q, want %q", location, "/claim-member/claim123")
+	}
+}
+
 func TestHandleRegisterPageRendersForAnonymousUsers(t *testing.T) {
 	t.Parallel()
 
@@ -103,6 +166,27 @@ func TestHandleRegisterPageRendersForAnonymousUsers(t *testing.T) {
 	body := rec.Body.String()
 	if !strings.Contains(body, "Register - Family Plan Manager") || !strings.Contains(body, "name taken") {
 		t.Fatalf("expected register page content in response, got %q", body)
+	}
+}
+
+func TestHandleRegisterPagePreservesClaimToken(t *testing.T) {
+	t.Parallel()
+
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/register?claim=claim123", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	if err := HandleRegisterPage()(c); err != nil {
+		t.Fatalf("HandleRegisterPage returned error: %v", err)
+	}
+
+	body := rec.Body.String()
+	if !strings.Contains(body, `name="claim" value="claim123"`) {
+		t.Fatalf("expected hidden claim field in response, got %q", body)
+	}
+	if !strings.Contains(body, `/login?claim=claim123`) {
+		t.Fatalf("expected claim-preserving login link in response, got %q", body)
 	}
 }
 

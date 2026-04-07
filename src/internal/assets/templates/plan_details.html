@@ -254,6 +254,7 @@
       <h3 class="text-lg font-semibold mb-4">Members</h3>
       <div class="space-y-3">
         {{range .members}}
+        {{$memberID := .ID}}
         <div class="flex justify-between items-center p-3 border rounded-lg">
           <div class="flex items-center flex-1">
             <div
@@ -295,7 +296,15 @@
                       class="text-xs text-gray-800 bg-gray-100 px-2 py-0.5 rounded"
                       >Left on {{slice .DateEnded 0 10}}</span
                     >
-                    {{end}}
+                    {{end}} {{if and $.is_owner .IsArtificial}}
+                    {{$claimLinkReady := ""}} {{with $.claim_links}}
+                    {{$claimLinkReady = index . $memberID}} {{end}} {{if
+                    $claimLinkReady}}
+                    <span
+                      class="text-xs text-blue-800 bg-blue-100 px-2 py-0.5 rounded"
+                      >Claim Link Ready</span
+                    >
+                    {{end}} {{end}}
                   </div>
                 </div>
                 {{if and (ne .ID $.plan.Owner) (or (eq .ID $.userId)
@@ -307,11 +316,55 @@
           </div>
           <div class="flex items-center space-x-2">
             {{if and $.is_owner (ne .ID $.plan.Owner) (not .LeaveRequested)}}
+            {{if .IsArtificial}}
+            {{$claimLink := ""}} {{with $.claim_links}} {{$claimLink = index .
+            $memberID}} {{end}} {{if $claimLink}}
+            <div class="relative inline-flex items-center">
+              <button
+                type="button"
+                data-claim-url="{{$claimLink}}"
+                class="text-blue-500 hover:text-blue-700 text-sm font-medium focus:outline-none"
+                _="on click
+                    call navigator.clipboard.writeText(my.dataset.claimUrl)
+                    remove .hidden from #claimLinkFeedback-{{$.plan.JoinCode}}-{{$memberID}}
+                    add .opacity-100 to #claimLinkFeedback-{{$.plan.JoinCode}}-{{$memberID}}
+                    remove .opacity-0 from #claimLinkFeedback-{{$.plan.JoinCode}}-{{$memberID}}
+                    wait 2s
+                    add .opacity-0 to #claimLinkFeedback-{{$.plan.JoinCode}}-{{$memberID}}
+                    remove .opacity-100 from #claimLinkFeedback-{{$.plan.JoinCode}}-{{$memberID}}
+                    wait 300ms
+                    add .hidden to #claimLinkFeedback-{{$.plan.JoinCode}}-{{$memberID}}"
+              >
+                Copy Claim Link
+              </button>
+              <span
+                id="claimLinkFeedback-{{$.plan.JoinCode}}-{{$memberID}}"
+                class="hidden absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs py-1 px-2 rounded opacity-0 transition-opacity duration-300 whitespace-nowrap"
+              >
+                Copied!
+              </span>
+            </div>
+            {{else}}
+            <form
+              action="/{{$.plan.JoinCode}}/create-member-claim-link"
+              method="post"
+              class="inline"
+            >
+              <input type="hidden" name="artificial_member_id" value="{{.ID}}" />
+              <button
+                type="submit"
+                class="text-blue-500 hover:text-blue-700 text-sm font-medium focus:outline-none"
+              >
+                Create Claim Link
+              </button>
+            </form>
+            {{end}}
+            {{end}}
             <form
               action="/{{$.plan.JoinCode}}/remove-member"
               method="post"
               class="inline"
-              onsubmit="return confirm('Are you sure you want to remove {{.Username}} from this plan?');"
+              onsubmit="return confirm('Are you sure you want to remove {{if .Name}}{{.Name}}{{else}}{{.Username}}{{end}} from this plan?');"
             >
               <input type="hidden" name="user_id" value="{{.ID}}" />
               <button

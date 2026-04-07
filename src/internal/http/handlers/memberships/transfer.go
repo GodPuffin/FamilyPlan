@@ -4,12 +4,12 @@ import (
 	"errors"
 	"net/http"
 
+	"familyplan/src/internal/memberclaim"
 	"familyplan/src/internal/planutil"
 
 	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/daos"
-	pbmodels "github.com/pocketbase/pocketbase/models"
 )
 
 // HandleTransferMembership converts an artificial member into a real user membership.
@@ -41,29 +41,6 @@ func HandleTransferMembership(app *pocketbase.PocketBase) echo.HandlerFunc {
 
 		missingTransferPrerequisite := errors.New("membership transfer prerequisite not found")
 		err = app.Dao().RunInTransaction(func(txDao *daos.Dao) error {
-			membershipsCollection, err := txDao.FindCollectionByNameOrId("memberships")
-			if err != nil {
-				return err
-			}
-
-			artificialMembershipFilter, err := planutil.BuildEqualsFilter(
-				planutil.FilterTerm{Field: "plan_id", Value: planRecord.Id},
-				planutil.FilterTerm{Field: "user_id", Value: artificialMemberID},
-				planutil.FilterTerm{Field: "is_artificial", Value: true},
-			)
-			if err != nil {
-				return err
-			}
-
-			artificialMembership, err := txDao.FindFirstRecordByFilter(
-				membershipsCollection.Id,
-				artificialMembershipFilter.Expression,
-				artificialMembershipFilter.Params,
-			)
-			if err != nil || artificialMembership == nil {
-				return missingTransferPrerequisite
-			}
-
 			joinRequestsCollection, err := txDao.FindCollectionByNameOrId("join_requests")
 			if err != nil {
 				return err
@@ -96,60 +73,14 @@ func HandleTransferMembership(app *pocketbase.PocketBase) echo.HandlerFunc {
 				return missingTransferPrerequisite
 			}
 
-			existingRealMembership, err := planutil.FindMembershipWithDao(txDao, planRecord.Id, realUserID)
-			if err != nil {
-				return err
-			}
-			if existingRealMembership != nil {
-				return missingTransferPrerequisite
-			}
-
-			paymentsCollection, err := txDao.FindCollectionByNameOrId("payments")
-			if err != nil {
-				return err
-			}
-
-			artificialPaymentsFilter, err := planutil.BuildEqualsFilter(
-				planutil.FilterTerm{Field: "plan_id", Value: planRecord.Id},
-				planutil.FilterTerm{Field: "user_id", Value: artificialMemberID},
-			)
-			if err != nil {
-				return err
-			}
-
-			artificialPayments, err := txDao.FindRecordsByFilter(
-				paymentsCollection.Id,
-				artificialPaymentsFilter.Expression,
-				"",
-				-1,
-				0,
-				artificialPaymentsFilter.Params,
-			)
-			if err != nil {
-				return err
-			}
-
-			for _, payment := range artificialPayments {
-				payment.Set("user_id", realUserID)
-				if err := txDao.SaveRecord(payment); err != nil {
-					return err
+			if err := memberclaim.TransferArtificialMembership(txDao, planRecord, artificialMemberID, realUserID); err != nil {
+				if errors.Is(err, memberclaim.ErrArtificialMemberUnavailable) || errors.Is(err, memberclaim.ErrAlreadyMember) {
+					return missingTransferPrerequisite
 				}
-			}
-
-			if err := txDao.DeleteRecord(artificialMembership); err != nil {
 				return err
 			}
 
-			newMembership := pbmodels.NewRecord(membershipsCollection)
-			newMembership.Set("plan_id", planRecord.Id)
-			newMembership.Set("user_id", realUserID)
-			newMembership.Set("is_artificial", false)
-			newMembership.Set("created", artificialMembership.GetDateTime("created"))
-			if err := txDao.SaveRecord(newMembership); err != nil {
-				return err
-			}
-
-			return txDao.DeleteRecord(request)
+			return nil
 		})
 		if err != nil {
 			if errors.Is(err, missingTransferPrerequisite) {
