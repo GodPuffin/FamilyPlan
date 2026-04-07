@@ -37,3 +37,12 @@ func TestAvatarURLEmpty(t *testing.T) {
 		t.Fatalf("AvatarURL(record without avatar) = %q, want empty string", got)
 	}
 }
+
+func TestAvatarURLNilCollection(t *testing.T) {
+	t.Parallel()
+
+	record := &pbmodels.Record{}
+	if got := AvatarURL(record); got != "" {
+		t.Fatalf("AvatarURL(record without collection) = %q, want empty string", got)
+	}
+}

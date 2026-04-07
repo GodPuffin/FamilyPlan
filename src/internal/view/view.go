@@ -24,13 +24,21 @@ var Funcs = template.FuncMap{
 		return fmt.Sprintf("$%.2f", money.Normalize(amount))
 	},
 	"slice": func(s string, i, j int) string {
-		if i >= len(s) {
+		if i < 0 {
+			i = 0
+		}
+		if j < i {
 			return ""
 		}
-		if j > len(s) {
-			j = len(s)
+
+		runes := []rune(s)
+		if i >= len(runes) {
+			return ""
 		}
-		return s[i:j]
+		if j > len(runes) {
+			j = len(runes)
+		}
+		return string(runes[i:j])
 	},
 	"div": func(a, b interface{}) float64 {
 		af, ok1 := toFloat(a)

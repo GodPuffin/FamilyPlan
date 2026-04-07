@@ -125,6 +125,9 @@ func TestTemplateFuncsHandleFormattingAndMath(t *testing.T) {
 	if got := slice("abcdef", 1, 4); got != "bcd" {
 		t.Fatalf("slice() = %q, want %q", got, "bcd")
 	}
+	if got := slice("Ñoño", 0, 1); got != "Ñ" {
+		t.Fatalf("slice() = %q, want %q", got, "Ñ")
+	}
 	if got := slice("abc", 5, 8); got != "" {
 		t.Fatalf("slice() = %q, want empty string", got)
 	}

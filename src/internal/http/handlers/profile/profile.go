@@ -1,6 +1,7 @@
 package profile
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 	"unicode/utf8"
@@ -9,8 +10,10 @@ import (
 	"familyplan/src/internal/userprofile"
 	"familyplan/src/internal/view"
 
+	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/pocketbase"
+	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/forms"
 	"github.com/pocketbase/pocketbase/tools/rest"
 )
@@ -117,16 +120,77 @@ func HandleProfileUpdate(app *pocketbase.PocketBase) echo.HandlerFunc {
 		if err := form.Submit(); err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]interface{}{
 				"success": false,
-				"message": "Failed to update profile",
+				"message": profileUpdateErrorMessage(err),
 			})
+		}
+
+		updatedRecord, err := app.Dao().FindRecordById(authCollection.Id, session.UserID)
+		if err != nil {
+			updatedRecord = authRecord
 		}
 
 		return c.JSON(http.StatusOK, map[string]interface{}{
 			"success":   true,
 			"message":   "Profile updated successfully",
 			"name":      name,
-			"username":  authRecord.GetString("username"),
-			"avatarURL": userprofile.AvatarURL(authRecord),
+			"username":  updatedRecord.GetString("username"),
+			"avatarURL": userprofile.AvatarURL(updatedRecord),
 		})
 	}
+}
+
+func profileUpdateErrorMessage(err error) string {
+	if msg := firstProfileErrorMessage(err); msg != "" {
+		return msg
+	}
+
+	return "Failed to update profile"
+}
+
+func firstProfileErrorMessage(value any) string {
+	switch v := value.(type) {
+	case *apis.ApiError:
+		if msg := firstProfileErrorMessage(v.RawData()); msg != "" {
+			return msg
+		}
+		if msg := firstProfileErrorMessage(v.Data); msg != "" {
+			return msg
+		}
+		return strings.TrimSpace(v.Message)
+	case validation.Errors:
+		for _, err := range v {
+			if msg := firstProfileErrorMessage(err); msg != "" {
+				return msg
+			}
+		}
+	case map[string]any:
+		if msg, ok := v["message"].(string); ok && strings.TrimSpace(msg) != "" {
+			return strings.TrimSpace(msg)
+		}
+		for _, item := range v {
+			if msg := firstProfileErrorMessage(item); msg != "" {
+				return msg
+			}
+		}
+	case map[string]string:
+		if msg := strings.TrimSpace(v["message"]); msg != "" {
+			return msg
+		}
+	case validation.Error:
+		return strings.TrimSpace(v.Error())
+	case error:
+		var apiErr *apis.ApiError
+		if errors.As(v, &apiErr) {
+			return firstProfileErrorMessage(apiErr)
+		}
+
+		var validationErrs validation.Errors
+		if errors.As(v, &validationErrs) {
+			return firstProfileErrorMessage(validationErrs)
+		}
+	case string:
+		return strings.TrimSpace(v)
+	}
+
+	return ""
 }
