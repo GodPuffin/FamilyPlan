@@ -6,6 +6,7 @@ type SessionData struct {
 	UserID          string
 	Username        string
 	Name            string
+	AvatarURL       string
 }
 
 // FamilyPlan represents a subscription plan that can be shared among family/friends.
