@@ -4,6 +4,7 @@ import (
 	"familyplan/src/internal/billing"
 	"familyplan/src/internal/domain"
 	"familyplan/src/internal/planutil"
+	"familyplan/src/internal/userprofile"
 
 	"github.com/pocketbase/pocketbase"
 )
@@ -20,10 +21,11 @@ func loadMembers(app *pocketbase.PocketBase, plan domain.FamilyPlan) ([]domain.M
 	ownerRecord, err := app.Dao().FindRecordById(usersCollection.Id, plan.Owner)
 	if err == nil && ownerRecord != nil {
 		members = append(members, domain.Member{
-			ID:       ownerRecord.Id,
-			Username: ownerRecord.GetString("username"),
-			Name:     ownerRecord.GetString("name"),
-			Balance:  0,
+			ID:        ownerRecord.Id,
+			Username:  ownerRecord.GetString("username"),
+			Name:      ownerRecord.GetString("name"),
+			AvatarURL: userprofile.AvatarURL(ownerRecord),
+			Balance:   0,
 		})
 		uniqueMembers[ownerRecord.Id] = true
 	}
@@ -87,6 +89,7 @@ func loadMembers(app *pocketbase.PocketBase, plan domain.FamilyPlan) ([]domain.M
 			ID:             userRecord.Id,
 			Username:       userRecord.GetString("username"),
 			Name:           userRecord.GetString("name"),
+			AvatarURL:      userprofile.AvatarURL(userRecord),
 			Balance:        balance,
 			LeaveRequested: membership.GetBool("leave_requested"),
 			DateEnded:      membership.GetDateTime("date_ended").String(),

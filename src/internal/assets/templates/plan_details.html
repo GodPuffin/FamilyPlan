@@ -256,12 +256,20 @@
         {{range .members}}
         <div class="flex justify-between items-center p-3 border rounded-lg">
           <div class="flex items-center flex-1">
+            {{if .AvatarURL}}
+            <img
+              src="{{.AvatarURL}}"
+              alt=""
+              class="w-10 h-10 rounded-full object-cover border border-gray-200"
+            />
+            {{else}}
             <div
               class="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-700"
             >
               {{if .Name}} {{slice .Name 0 1 | upper}} {{else}} {{slice
               .Username 0 1 | upper}} {{end}}
             </div>
+            {{end}}
             <div class="ml-3 flex-1">
               <div class="flex justify-between">
                 <div>

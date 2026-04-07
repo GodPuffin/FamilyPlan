@@ -28,7 +28,7 @@
         <nav class="mt-4">
           <ul class="flex flex-wrap gap-4 items-center">
             {{if .isAuthenticated}}
-            <li class="flex flex-wrap items-center gap-3">
+            <li class="flex items-center gap-3">
               {{if .avatarURL}}
               <img
                 src="{{.avatarURL}}"
@@ -42,25 +42,26 @@
                 {{if .name}}{{slice .name 0 1 | upper}}{{else}}{{slice .username 0 1 | upper}}{{end}}
               </div>
               {{end}}
-              <span class="text-gray-600 mr-1">
-                Signed in as
-                <span class="font-semibold text-gray-800"
-                  >{{if .name}}{{.name}}{{else}}{{.username}}{{end}}</span
-                >
-                {{if .username}}
-                <span class="block text-xs text-gray-500">@{{.username}}</span>
-                {{end}}
-              </span>
-              <button
-                id="openProfileModalBtn"
-                class="text-blue-600 hover:text-blue-800"
-                _="on click toggle .hidden on #profileModal"
-              >
-                Edit Profile
-              </button>
-              <a href="/logout" class="text-red-600 hover:text-red-800"
-                >Logout</a
-              >
+              <div class="text-gray-600">
+                <div>
+                  Signed in as
+                  <span class="font-semibold text-gray-800"
+                    >{{if .name}}{{.name}}{{else}}{{.username}}{{end}}</span
+                  >
+                </div>
+                <div class="mt-1 flex items-center gap-3 text-sm">
+                  <button
+                    id="openProfileModalBtn"
+                    class="text-blue-600 hover:text-blue-800"
+                    _="on click toggle .hidden on #profileModal"
+                  >
+                    Edit Profile
+                  </button>
+                  <a href="/logout" class="text-red-600 hover:text-red-800"
+                    >Logout</a
+                  >
+                </div>
+              </div>
             </li>
             {{end}}
           </ul>

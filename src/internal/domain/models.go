@@ -28,6 +28,7 @@ type Member struct {
 	ID             string  `json:"id"`
 	Username       string  `json:"username"`
 	Name           string  `json:"name"`
+	AvatarURL      string  `json:"avatar_url"`
 	Balance        float64 `json:"balance"`
 	LeaveRequested bool    `json:"leave_requested"`
 	DateEnded      string  `json:"date_ended"`
