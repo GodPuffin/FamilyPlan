@@ -66,6 +66,7 @@ func RenderPage(c echo.Context, page string, data map[string]interface{}) error 
 		setDefault(data, "isAuthenticated", session.IsAuthenticated)
 		setDefault(data, "username", session.Username)
 		setDefault(data, "name", session.Name)
+		setDefault(data, "avatarURL", session.AvatarURL)
 		setDefault(data, "userId", session.UserID)
 	}
 

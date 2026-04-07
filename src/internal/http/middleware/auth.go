@@ -5,6 +5,7 @@ import (
 
 	"familyplan/src/internal/domain"
 	"familyplan/src/internal/http/sessionutil"
+	"familyplan/src/internal/userprofile"
 
 	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/pocketbase"
@@ -28,6 +29,7 @@ func SetupAuth(app *pocketbase.PocketBase) echo.MiddlewareFunc {
 						session.UserID = record.Id
 						session.Username = record.GetString("username")
 						session.Name = record.GetString("name")
+						session.AvatarURL = userprofile.AvatarURL(record)
 					}
 				}
 			}

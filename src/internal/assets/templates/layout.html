@@ -26,25 +26,42 @@
       <header class="mb-8">
         <h1 class="text-3xl font-bold text-gray-800">Family Plan Manager</h1>
         <nav class="mt-4">
-          <ul class="flex space-x-4 items-center">
+          <ul class="flex flex-wrap gap-4 items-center">
             {{if .isAuthenticated}}
-            <li class="flex items-center">
-              <span class="text-gray-600 mr-4"
-                >Signed in as:
-                <span class="font-semibold"
-                  >{{if .name}}{{.name}}{{else}}{{.username}}{{end}}</span
-                ></span
+            <li class="flex items-center gap-3">
+              {{if .avatarURL}}
+              <img
+                src="{{.avatarURL}}"
+                alt=""
+                class="h-10 w-10 rounded-full object-cover border border-gray-200"
+              />
+              {{else}}
+              <div
+                class="h-10 w-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-semibold"
               >
-              <button
-                id="openProfileModalBtn"
-                class="text-blue-600 hover:text-blue-800 mr-4"
-                _="on click toggle .hidden on #profileModal"
-              >
-                Edit Profile
-              </button>
-              <a href="/logout" class="text-red-600 hover:text-red-800"
-                >Logout</a
-              >
+                {{if .name}}{{slice .name 0 1 | upper}}{{else}}{{slice .username 0 1 | upper}}{{end}}
+              </div>
+              {{end}}
+              <div class="text-gray-600">
+                <div>
+                  Signed in as
+                  <span class="font-semibold text-gray-800"
+                    >{{if .name}}{{.name}}{{else}}{{.username}}{{end}}</span
+                  >
+                </div>
+                <div class="mt-1 flex items-center gap-3 text-sm">
+                  <button
+                    id="openProfileModalBtn"
+                    class="text-blue-600 hover:text-blue-800"
+                    _="on click toggle .hidden on #profileModal"
+                  >
+                    Edit Profile
+                  </button>
+                  <a href="/logout" class="text-red-600 hover:text-red-800"
+                    >Logout</a
+                  >
+                </div>
+              </div>
             </li>
             {{end}}
           </ul>
@@ -70,10 +87,10 @@
     <!-- Profile Edit Modal -->
     <div
       id="profileModal"
-      class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden"
+      class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden p-4"
       _="on click if event.target.id == 'profileModal' then add .hidden to me end"
     >
-      <div class="bg-white rounded-lg p-8 max-w-md w-full">
+      <div class="bg-white rounded-lg p-8 max-w-md w-full max-h-[90vh] overflow-y-auto">
         <div class="flex justify-between items-center mb-6">
           <h3 class="text-xl font-bold">Edit Profile</h3>
           <button
@@ -112,7 +129,9 @@
           <form
             id="profileForm"
             hx-post="/profile"
+            hx-encoding="multipart/form-data"
             hx-swap="none"
+            enctype="multipart/form-data"
             _="on htmx:afterRequest
                if event.detail.successful
                  add .hidden to #profileModal
@@ -121,15 +140,72 @@
                end"
             class="space-y-4"
           >
+            <div class="flex items-center gap-4 rounded-md border border-gray-200 bg-gray-50 p-4">
+              {{if .avatarURL}}
+              <img
+                src="{{.avatarURL}}"
+                alt=""
+                class="h-16 w-16 rounded-full object-cover border border-gray-200"
+              />
+              {{else}}
+              <div
+                class="h-16 w-16 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xl font-semibold"
+              >
+                {{if .name}}{{slice .name 0 1 | upper}}{{else}}{{slice .username 0 1 | upper}}{{end}}
+              </div>
+              {{end}}
+              <div>
+                <p class="font-semibold text-gray-800">
+                  {{if .name}}{{.name}}{{else}}{{.username}}{{end}}
+                </p>
+                {{if .username}}
+                <p class="text-sm text-gray-500">@{{.username}}</p>
+                {{end}}
+              </div>
+            </div>
+
             <div>
               <label
-                for="name"
+                for="profileModalAvatar"
+                class="block text-sm font-medium text-gray-700 mb-1"
+                >Profile Picture</label
+              >
+              <input
+                type="file"
+                id="profileModalAvatar"
+                name="avatar"
+                accept="image/jpeg,image/png,image/svg+xml,image/gif,image/webp"
+                class="w-full text-sm text-gray-700 border border-gray-300 rounded-md file:mr-4 file:border-0 file:bg-blue-50 file:text-blue-700 file:px-3 file:py-2 hover:file:bg-blue-100"
+              />
+              <p class="text-sm text-gray-500 mt-1">
+                JPG, PNG, GIF, SVG, or WebP up to 5 MB.
+              </p>
+            </div>
+
+            <div>
+              <label
+                for="profileModalUsername"
+                class="block text-sm font-medium text-gray-700 mb-1"
+                >Username</label
+              >
+              <input
+                type="text"
+                id="profileModalUsername"
+                value="{{.username}}"
+                readonly
+                class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600"
+              />
+            </div>
+
+            <div>
+              <label
+                for="profileModalName"
                 class="block text-sm font-medium text-gray-700 mb-1"
                 >Display Name</label
               >
               <input
                 type="text"
-                id="name"
+                id="profileModalName"
                 name="name"
                 value="{{.name}}"
                 required
